@@ -4,6 +4,7 @@ using namespace Rcpp;
 //' Remove consecutive stretches from a matrix of peptide traces.
 //'
 //' @param x A single integer.
+//' @export
 // [[Rcpp::export]]
 NumericMatrix removeStretchesFilter(NumericMatrix mat,
                                     int cutoff) {
