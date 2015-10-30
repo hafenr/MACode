@@ -1,0 +1,8 @@
+Package: MACode
+Title: Functions and code snippets for my master thesis
+Description: This package contains some simple functions and snippets
+        to process MS intensity data.
+Version: 0.0
+License: MIT
+Author: Robin Hafen <robin.hafen@gmail.com>
+Maintainer: Robin hafen <robin.hafen@gmail.com>
