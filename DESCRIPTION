@@ -6,3 +6,5 @@ Version: 0.0
 License: MIT
 Author: Robin Hafen <robin.hafen@gmail.com>
 Maintainer: Robin hafen <robin.hafen@gmail.com>
+LinkingTo: Rcpp
+Imports: Rcpp
