@@ -3,13 +3,13 @@
 
 
 #' Check for each feature in `detected.features` if there is another feature in
-#' `true.features` that is close to it. The endresult is a DF of feature
+#' `true.positive.features` that is close to it. The endresult is a DF of feature
 #' retention times that are flagged with either 'FP', 'TP', or 'FN'.
 #' 
-#' @param true.features data.table of true, manually annotated features.
+#' @param true.positive.features data.table of true, manually annotated features.
 #' The DF must have the columns: 'complex_id', 'rt'.
 #' @param detected.features data.table of detected features.
-#' The DF must have the columns: 'complex_id', 'rt'.
+#' The DF must have the columns: 'complex_id', 'center_rt'.
 #' @param feature.vicinity.tol A number that indicates how close an
 #' experimentally determined feature has to be to a manually annotated one, to
 #' still count as a true positive.
@@ -17,18 +17,21 @@
 #' type is of type character an is either 'FP', 'FN', 'TP'.
 #' 
 #' @examples 
-#' true.features <- mergeManualComplexAnnotations(annotation.file1,
+#' true.positive.features <- mergeManualComplexAnnotations(annotation.file1,
 #'                                                annotation.file2,
 #'                                                'apexes_fully_observed')
 #' detected.features <- fread('cprophet_output/sec_complexes.tsv')
-#' assessed.feats <- assessComplexFeatures(true.features, detected.features)
+#' assessed.feats <- assessComplexFeatures(true.positive.features, detected.features)
 #' 
 #' @export
-assessComplexFeatures <- function(true.features, detected.features,
+assessComplexFeatures <- function(true.positive.features, detected.features,
                                   feature.vicinity.tol=5) {
     complex.ids <- unique(detected.features$complex_id)
-    do.call(rbind, lapply(complex.ids, function(cid) {
-        rt.true <- true.features[complex_id == cid, ]$rt
+    fac <- function(t) {
+        factor(t, levels=c('TN', 'FN', 'TP', 'FP'))
+    }
+    assessed.feats.without.TN <- do.call(rbind, lapply(complex.ids, function(cid) {
+        rt.true <- true.positive.features[complex_id == cid, ]$rt
         rt.exp <- detected.features[complex_id == cid, ]$center_rt
         # Declare integer vectors of true positives/false positives/false
         # negatives that are build up in the following loops.
@@ -72,14 +75,28 @@ assessComplexFeatures <- function(true.features, detected.features,
         # Build a dataframe of the feature rts and add a character indicator
         # flag to what type they belong. 
         classifed.rts <- rbind(
-            data.frame(rt=FNs, type=(if (length(FNs) > 0) 'FN' else character(0))),
-            data.frame(rt=TPs, type=(if (length(TPs) > 0) 'TP' else character(0))),
-            data.frame(rt=FPs, type=(if (length(FPs) > 0) 'FP' else character(0)))
+            data.frame(rt=FNs, type=(if (length(FNs) > 0) fac('FN') else character(0))),
+            data.frame(rt=TPs, type=(if (length(TPs) > 0) fac('TP') else character(0))),
+            data.frame(rt=FPs, type=(if (length(FPs) > 0) fac('FP') else character(0)))
         )
 
         classifed.rts$complex_id <- cid
+
         as.data.table(classifed.rts)
     }))
+
+    # We calculated a list of TP, FP, FN, but the TNs need to be generated:
+    # Each theoretically possible feature located at a full sec dimension that
+    # is NOT a true positive, is taken as a true negative.
+    possible.rt <- seq(min(detected.features$center_rt),
+                       max(detected.features$center_rt))
+    genTN <- function(true.rt) {
+        data.frame(rt=setdiff(possible.rt, true.rt),
+                   type=fac('TN'))
+    }
+    true.negative.features <- true.positive.features[, genTN(rt), by=complex_id]
+
+    rbind(assessed.feats.without.TN, true.negative.features)
 }
 
 
@@ -198,3 +215,6 @@ stopifnot(setequal(mergeRTs(c(1, 5), c(3, 2)), c(1, 5, 3)))
 stopifnot(setequal(mergeRTs(c(1, 5), c(3, 2), window=2), c(1, 5)))
 stopifnot(setequal(mergeRTs(integer(0), c(3, 2)), c(3, 2)))
 stopifnot(setequal(mergeRTs(c(3, 2), integer(0)), c(3, 2)))
+
+
+
