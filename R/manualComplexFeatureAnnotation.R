@@ -1,6 +1,7 @@
 # Due to: http://stackoverflow.com/questions/24501245/data-table-throws-object-not-found-error
 .datatable.aware=TRUE
 
+
 #' Check for each feature in `detected.features` if there is another feature in
 #' `true.features` that is close to it. The endresult is a DF of feature
 #' retention times that are flagged with either 'FP', 'TP', or 'FN'.
@@ -89,6 +90,7 @@ readManualAnnotationFile <- function(fname) {
     annot
 }
 
+
 #' Split a list of apexes like '1,2,3,4' and create a data.frame
 #' data.frame(rt=c(1, 2, 3, 4), complex.id=X, apex.type=Y).
 #' If no split was possible, NULL is returned.
@@ -106,6 +108,7 @@ apexStringToDF <- function(complex.id, sep.apexes, apex.type) {
     }
 }
 
+
 #' Given a DF with columns 'complex_id', and another column holding 
 #' comma-separated strings of numbers, create a long list style DF
 #' where each row corresponds to a number.
@@ -118,6 +121,7 @@ createApexDF <- function(annotations, apex.col.name) {
     rownames(apex.df) <- NULL
     apex.df
 }
+
 
 #' Merge to vectors of numbers in such a way that the output won't
 #' contain numbers of the second vector that are within a interval
@@ -135,6 +139,7 @@ mergeRTs <- function(rts1, rts2, window=1) {
     merged.rts
 }
 
+
 #' Merge the RTs for apexes of `apex.type` for two DTs.
 #' dt1 is treated as the reference DT.
 createMergedList <- function(dt1, dt2, apex.type) {
@@ -150,6 +155,7 @@ createMergedList <- function(dt1, dt2, apex.type) {
         }
     }))
 }
+
 
 #' Read and merge two TSV files where each row corresponds to an 
 #' annotated complex. 
@@ -175,7 +181,6 @@ mergeManualComplexAnnotations <- function(annotations.fname.1,
 
     createMergedList(apex.dt.1, apex.dt.2, apex.col.name)
 }
-
 stopifnot(setequal(mergeRTs(c(1, 5), c(3, 2)), c(1, 5, 3)))
 stopifnot(setequal(mergeRTs(c(1, 5), c(3, 2), window=2), c(1, 5)))
 stopifnot(setequal(mergeRTs(integer(0), c(3, 2)), c(3, 2)))
