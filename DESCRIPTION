@@ -7,5 +7,9 @@ Version: 0.0
 License: MIT
 Author: Robin Hafen <robin.hafen@gmail.com>
 Maintainer: Robin hafen <robin.hafen@gmail.com>
-Imports: Rcpp (>= 0.12.1)
+Depends: data.table
+Imports: Rcpp (>= 0.12.1),
+    data.table,
+    ggplot2,
+    cvTools
 LinkingTo: Rcpp

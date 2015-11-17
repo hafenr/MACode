@@ -1,5 +1,3 @@
-require('cvTools')
-
 MAX.COMPONENTS <- 10
 
 g <- function(x, a, s, mu) {
