@@ -82,8 +82,6 @@ assessComplexFeatures <- function(true.features, detected.features,
 #' 
 #' @param fname The filename of the TSV file.
 #' @return A data.table.
-#' 
-#' @export
 readManualAnnotationFile <- function(fname) {
     annot <- fread(fname, sep='\t', sep2=',', colClasses=rep('character', 3))
     setnames(annot, c('complex_id', 'apexes_fully_observed',
@@ -139,8 +137,6 @@ mergeRTs <- function(rts1, rts2, window=1) {
 
 #' Merge the RTs for apexes of `apex.type` for two DTs.
 #' dt1 is treated as the reference DT.
-#' 
-#' @export
 createMergedList <- function(dt1, dt2, apex.type) {
     complex.ids <- unique(dt1$complex_id)
     do.call(rbind, lapply(complex.ids, function(cid) {
@@ -155,25 +151,29 @@ createMergedList <- function(dt1, dt2, apex.type) {
     }))
 }
 
+#' Read and merge two TSV files where each row corresponds to an 
+#' annotated complex. 
+#' The table must have the columns: 'complex_id' and an additional column of
+#' comma-separated integers that give the retention times of the features. This
+#' name has to be passed to the function.
+#' 
+#' @param annotations.fname.1 The filename of the first TSV file.
+#' @param annotations.fname.2 The filename of the second TSV file.
+#' @param apex.col.name The name of the column holding the manually annotated
+#'        feature retention times.
 #' @export
 mergeManualComplexAnnotations <- function(annotations.fname.1,
-                                          apex.col.name.1,
                                           annotations.fname.2,
-                                          apex.col.name.2) {
+                                          apex.col.name) {
     annotations.1 <- readManualAnnotationFile(annotations.fname.1)
     annotations.2 <- readManualAnnotationFile(annotations.fname.2)
 
-    apex.df.1 <- createApexDF(annotations.1, apex.col.name.1)
-    apex.df.2 <- createApexDF(annotations.2, apex.col.name.2)
+    apex.df.1 <- createApexDF(annotations.1, apex.col.name)
+    apex.df.2 <- createApexDF(annotations.2, apex.col.name)
     apex.dt.1 <- as.data.table(apex.df.1, key='complex_id')
     apex.dt.2 <- as.data.table(apex.df.2, key='complex_id')
 
-    apex.dt.merged <- rbind(
-        createMergedList(apex.dt.1, apex.dt.2, 'apexes_fully_observed'),
-        createMergedList(apex.dt.1, apex.dt.2, 'apexes_partially_observed')
-    )
-
-    apex.dt.merged
+    createMergedList(apex.dt.1, apex.dt.2, apex.col.name)
 }
 
 stopifnot(setequal(mergeRTs(c(1, 5), c(3, 2)), c(1, 5, 3)))
