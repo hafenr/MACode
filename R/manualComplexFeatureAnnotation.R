@@ -16,6 +16,13 @@
 #' @return A data.table with the columns: 'complex_id', 'rt', 'type', where
 #' type is of type character an is either 'FP', 'FN', 'TP'.
 #' 
+#' @examples 
+#' true.features <- mergeManualComplexAnnotations(annotation.file1,
+#'                                                annotation.file2,
+#'                                                'apexes_fully_observed')
+#' detected.features <- fread('cprophet_output/sec_complexes.tsv')
+#' assessed.feats <- assessComplexFeatures(true.features, detected.features)
+#' 
 #' @export
 assessComplexFeatures <- function(true.features, detected.features,
                                   feature.vicinity.tol=5) {
@@ -167,6 +174,12 @@ createMergedList <- function(dt1, dt2, apex.type) {
 #' @param annotations.fname.2 The filename of the second TSV file.
 #' @param apex.col.name The name of the column holding the manually annotated
 #'        feature retention times.
+#' 
+#' @examples
+#' true.features <- mergeManualComplexAnnotations('annotation_file_1.tsv',
+#'                                                'annotation_file_2.tsv',
+#'                                                'apexes_fully_observed')
+#'
 #' @export
 mergeManualComplexAnnotations <- function(annotations.fname.1,
                                           annotations.fname.2,
