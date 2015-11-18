@@ -4,7 +4,7 @@
 
 #' Check for each feature in `detected.features` if there is another feature in
 #' `true.positive.features` that is close to it. The endresult is a DF of feature
-#' retention times that are flagged with either 'FP', 'TP', or 'FN'.
+#' retention times that are flagged with either 'FP', 'TP', 'TN', or 'FN'.
 #' 
 #' @param true.positive.features data.table of true, manually annotated features.
 #' The DF must have the columns: 'complex_id', 'rt'.
@@ -14,19 +14,21 @@
 #' experimentally determined feature has to be to a manually annotated one, to
 #' still count as a true positive.
 #' @return A data.table with the columns: 'complex_id', 'rt', 'type', where
-#' type is of type character an is either 'FP', 'FN', 'TP'.
+#' type is of type character an is either 'FP', 'FN', 'TP', 'TN'.
 #' 
 #' @examples 
-#' true.positive.features <- mergeManualComplexAnnotations(annotation.file1,
-#'                                                annotation.file2,
-#'                                                'apexes_fully_observed')
+#' manual.annotations.raw <- readManualAnnotationFile(annotations.1.raw)
+#' manual.annotations <-
+#'     createManualComplexAnnotations(manual.annotations.1.raw, 'apexes_partially_observed') 
 #' detected.features <- fread('cprophet_output/sec_complexes.tsv')
-#' assessed.feats <- assessComplexFeatures(true.positive.features, detected.features)
+#' assessed.feats <- assessComplexFeatures(manual.annotations, detected.features)
 #' 
 #' @export
-assessComplexFeatures <- function(true.positive.features, detected.features,
+assessComplexFeatures <- function(true.positive.features,
+                                  detected.features,
                                   feature.vicinity.tol=5) {
     complex.ids <- unique(detected.features$complex_id)
+    # Helper function to create factors for true positives etc. 
     fac <- function(t) {
         factor(t, levels=c('TN', 'FN', 'TP', 'FP'))
     }
@@ -107,6 +109,8 @@ assessComplexFeatures <- function(true.positive.features, detected.features,
 #' 
 #' @param fname The filename of the TSV file.
 #' @return A data.table.
+#'
+#' @export
 readManualAnnotationFile <- function(fname) {
     annot <- fread(fname, sep='\t', sep2=',', colClasses=rep('character', 3))
     setnames(annot, c('complex_id', 'apexes_fully_observed',
@@ -126,9 +130,7 @@ readManualAnnotationFile <- function(fname) {
 apexStringToDF <- function(complex.id, sep.apexes, apex.type) {
     rt <- as.numeric(strsplit(sep.apexes, ',')[[1]])
     if (length(rt) > 0) {  # if there was something to split on
-        data.frame(complex_id=complex.id, rt=rt,
-                   apex_type=apex.type,
-                   stringsAsFactors=F)
+        data.frame(complex_id=complex.id, rt=rt)
     }
 }
 
@@ -136,12 +138,24 @@ apexStringToDF <- function(complex.id, sep.apexes, apex.type) {
 #' Given a DF with columns 'complex_id', and another column holding 
 #' comma-separated strings of numbers, create a long list style DF
 #' where each row corresponds to a number.
-createApexDF <- function(annotations, apex.col.name) {
+#' @param annotations A data.frame with columns 'complex_id' and a second
+#'                    column with comma-separated retention times of the
+#'                    complex features.
+#' @param apex.col.name The name of the column that holds the retention
+#'                      times.
+#' @returns A data.table with the following columns: 'complex_id', 'rt'.
+#' @examples
+#' manual.annotations.raw <- readManualAnnotationFile('somefile.tsv)
+#' manual.annotations <-
+#'     createManualComplexAnnotations(manual.annotations, 'apexes_partially_observed') 
+#' 
+#' @export
+createManualComplexAnnotations <- function(annotations, apex.col.name) {
     dframes.list <- mapply(apexStringToDF, annotations$complex_id,
-                           annotations[[apex.col.name]], apex.col.name)
+                           annotations[[apex.col.name]])
     # combine a list of dataframes into one large dataframe.
     # rbind will ignore entries that are NULL.
-    apex.df <- do.call(rbind, dframes.list)
+    apex.df <- as.data.table(do.call(rbind, dframes.list))
     rownames(apex.df) <- NULL
     apex.df
 }
@@ -162,55 +176,6 @@ mergeRTs <- function(rts1, rts2, window=1) {
     merged.rts <- c(rts1, other.rts)
     merged.rts
 }
-
-
-#' Merge the RTs for apexes of `apex.type` for two DTs.
-#' dt1 is treated as the reference DT.
-createMergedList <- function(dt1, dt2, apex.type) {
-    complex.ids <- unique(dt1$complex_id)
-    do.call(rbind, lapply(complex.ids, function(cid) {
-        ref.rts <- dt1[complex_id == cid & apex_type == apex.type, ]$rt
-        other.rts <- dt2[complex_id == cid & apex_type == apex.type, ]$rt
-        merged <- mergeRTs(ref.rts, other.rts)
-        if (length(merged) > 0) {
-            data.table(complex_id=cid, rt=merged, apex_type=apex.type)
-        } else {
-            NULL
-        }
-    }))
-}
-
-
-#' Read and merge two TSV files where each row corresponds to an 
-#' annotated complex. 
-#' The table must have the columns: 'complex_id' and an additional column of
-#' comma-separated integers that give the retention times of the features. This
-#' name has to be passed to the function.
-#' 
-#' @param annotations.fname.1 The filename of the first TSV file.
-#' @param annotations.fname.2 The filename of the second TSV file.
-#' @param apex.col.name The name of the column holding the manually annotated
-#'        feature retention times.
-#' 
-#' @examples
-#' true.features <- mergeManualComplexAnnotations('annotation_file_1.tsv',
-#'                                                'annotation_file_2.tsv',
-#'                                                'apexes_fully_observed')
-#'
-#' @export
-mergeManualComplexAnnotations <- function(annotations.fname.1,
-                                          annotations.fname.2,
-                                          apex.col.name) {
-    annotations.1 <- readManualAnnotationFile(annotations.fname.1)
-    annotations.2 <- readManualAnnotationFile(annotations.fname.2)
-
-    apex.df.1 <- createApexDF(annotations.1, apex.col.name)
-    apex.df.2 <- createApexDF(annotations.2, apex.col.name)
-    apex.dt.1 <- as.data.table(apex.df.1, key='complex_id')
-    apex.dt.2 <- as.data.table(apex.df.2, key='complex_id')
-
-    createMergedList(apex.dt.1, apex.dt.2, apex.col.name)
-}
 stopifnot(setequal(mergeRTs(c(1, 5), c(3, 2)), c(1, 5, 3)))
 stopifnot(setequal(mergeRTs(c(1, 5), c(3, 2), window=2), c(1, 5)))
 stopifnot(setequal(mergeRTs(integer(0), c(3, 2)), c(3, 2)))
@@ -218,3 +183,36 @@ stopifnot(setequal(mergeRTs(c(3, 2), integer(0)), c(3, 2)))
 
 
 
+#' Merge the RTs for apexes of `apex.type` for two DTs.
+#' dt1 is treated as the reference DT.
+#' Merge two data.tables where each row corresponds to manually annotated
+#' complex feature.
+#' The table must have the columns: 'complex_id' and 'rt'.
+#' 
+#' @param dt1 The first DT.
+#' @param dt2 The second DT.
+#' 
+#' @examples
+#' manual.annotations.1.raw <- readManualAnnotationFile(annotations.1.raw)
+#' manual.annotations.2.raw <- readManualAnnotationFile(annotations.2.raw)
+#' manual.annotations.1 <-
+#'     createManualComplexAnnotations(manual.annotations.1.raw, 'apexes_partially_observed') 
+#' manual.annotations.2 <-
+#'     createManualComplexAnnotations(manual.annotations.2.raw, 'apexes_partially_observed') 
+#' manual.annotations <- mergeManualComplexAnnotations(manual.annotations.1,
+#'                                                     manual.annotations.2)
+#'
+#' @export
+mergeManualComplexAnnotations <- function(dt1, dt2) {
+    complex.ids <- unique(dt1$complex_id)
+    do.call(rbind, lapply(complex.ids, function(cid) {
+        ref.rts <- dt1[complex_id == cid, ]$rt
+        other.rts <- dt2[complex_id == cid, ]$rt
+        merged <- mergeRTs(ref.rts, other.rts)
+        if (length(merged) > 0) {
+            data.table(complex_id=cid, rt=merged)
+        } else {
+            NULL
+        }
+    }))
+}
