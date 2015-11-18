@@ -26,15 +26,19 @@
 #' @export
 assessComplexFeatures <- function(true.positive.features,
                                   detected.features,
+                                  min.rt, max.rt,
                                   feature.vicinity.tol=5) {
     complex.ids <- unique(detected.features$complex_id)
     # Helper function to create factors for true positives etc. 
     fac <- function(t) {
         factor(t, levels=c('TN', 'FN', 'TP', 'FP'))
     }
-    assessed.feats.without.TN <- do.call(rbind, lapply(complex.ids, function(cid) {
+    # All possible RTs where a feature could elute
+    possible.rt <- seq(min.rt, max.rt)
+
+    do.call(rbind, lapply(complex.ids, function(cid) {
         rt.true <- true.positive.features[complex_id == cid, ]$rt
-        rt.exp <- detected.features[complex_id == cid, ]$center_rt
+        rt.exp <- round(detected.features[complex_id == cid, ]$center_rt, 0)
         # Declare integer vectors of true positives/false positives/false
         # negatives that are build up in the following loops.
         TPs <- integer(0)
@@ -65,13 +69,14 @@ assessComplexFeatures <- function(true.positive.features,
                 TPs <- c(TPs, t.exp)
                 # Remove the annotated vaue from the list so that it won't get
                 # assigned to another feature rt of the same complex.
-                rt.true <- setdiff(rt.true, most.proximate.true.rt)
+                # rt.true <- setdiff(rt.true, most.proximate.true.rt)
             }
         }
         # All those annotated RT values that were not assigned (i.e. were also not
         # removed from the original array) by the setdiff call above are by
         # definition false negatives.
         FNs <- rt.true
+        TNs <- setdiff(possible.rt, c(TPs, FPs, FNs))
         # The true negatives would be all theoretical complexes that aren't in TP.
 
         # Build a dataframe of the feature rts and add a character indicator
@@ -79,26 +84,14 @@ assessComplexFeatures <- function(true.positive.features,
         classifed.rts <- rbind(
             data.frame(rt=FNs, type=(if (length(FNs) > 0) fac('FN') else character(0))),
             data.frame(rt=TPs, type=(if (length(TPs) > 0) fac('TP') else character(0))),
-            data.frame(rt=FPs, type=(if (length(FPs) > 0) fac('FP') else character(0)))
+            data.frame(rt=FPs, type=(if (length(FPs) > 0) fac('FP') else character(0))),
+            data.frame(rt=TNs, type=(if (length(TNs) > 0) fac('TN') else character(0)))
         )
 
         classifed.rts$complex_id <- cid
 
         as.data.table(classifed.rts)
     }))
-
-    # We calculated a list of TP, FP, FN, but the TNs need to be generated:
-    # Each theoretically possible feature located at a full sec dimension that
-    # is NOT a true positive, is taken as a true negative.
-    possible.rt <- seq(min(detected.features$center_rt),
-                       max(detected.features$center_rt))
-    genTN <- function(true.rt) {
-        data.frame(rt=setdiff(possible.rt, true.rt),
-                   type=fac('TN'))
-    }
-    true.negative.features <- true.positive.features[, genTN(rt), by=complex_id]
-
-    rbind(assessed.feats.without.TN, true.negative.features)
 }
 
 
