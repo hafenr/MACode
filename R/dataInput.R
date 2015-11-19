@@ -7,6 +7,12 @@
 #'        This table must have the columns: 'peptide_id', 'sec', 'peptide_intensity',
 #'        and 'protein_id'. 'sec' corresponds to a numeric time value and 'protein_id'
 #'        to the protein that was inferred for this peptide.
+#' @example
+#' protein.traces.with.complex <- produceComplexAnnotatedProteinTraces(
+#'     '~/Dev/MAScripts/data/corum_complex_protein_assoc.tsv',
+#'     '~/Dev/MAScripts/data/4_Fixed_weights_wMS1/Subsetted_OSW_Output/Peptide_Matrices/Long_Lists/4_osw_output_mscore_lt_1percent_no_requant_no_decoy_FILTERED.tsv'
+#' )
+#'
 #' @return A data.table of protein intensity observations.
 #' @export
 produceComplexAnnotatedProteinTraces <- function(filename.corum.complex.assoc,
