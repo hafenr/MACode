@@ -222,3 +222,80 @@ mergeManualComplexAnnotations <- function(dt1, dt2) {
         }
     }))
 }
+
+
+#' Calculate the true positive rate (== recall)
+calcTPR <- function(dt) {
+    fn <- dt[type == 'FN', .N]
+    tp <- dt[type == 'TP', .N]
+    tp / (tp + fn)  # TP / P 
+}
+
+
+#' Calculate the false positive rate (== 1 - specificity)
+calcFPR <- function(dt) {
+    fp <- dt[type == 'FP', .N]
+    tn <- dt[type == 'TN', .N]
+    fp / (tn + fp)  # FP / N
+}
+
+
+#' @param detected.features A dataframe with the columns: 'complex_id', 'rt'
+#' @param true.positive.features A dataframe with the columns: 'complex_id', 'rt'
+#' @param cutoffs A numeric vector of apex_mw_fit values that should be used to
+#'                define if a feature passes the molecular weight test or not
+#' @param feature.vicinity.tol A numeric value that specifies how near an
+#'                             experimental feature has to be to a manually
+#'                             annotated one to count as a true positive
+#' @export
+makeROC <- function(detected.features,
+                    true.positive.features,
+                    cutoffs,
+                    feature.vicinity.tol=5) {
+    fpr <- numeric(length=length(cutoffs))
+    tpr <- numeric(length=length(cutoffs))
+    for (i in seq_along(cutoffs)) {
+        cat(sprintf('Calculating TPR/FPR. Iteration: %d\n', i))
+        cval <- cutoffs[i]
+        detected.features.filtered <-
+            detected.features[apex_apmw_fit < cval, list(complex_id, center_rt)]
+        if (nrow(detected.features.filtered) != 0) {
+            all.features <- assessComplexFeatures(
+                true.positive.features=true.positive.features,
+                detected.features=detected.features.filtered,
+                min.rt=3,
+                max.rt=84,
+                feature.vicinity.tol=5
+            )
+            fpr[i] <- calcFPR(all.features)
+            tpr[i] <- calcTPR(all.features)
+        } else {
+            fpr[i] <- 0
+            tpr[i] <- 0
+        }
+    }
+    fpr.order <- order(fpr)
+
+    data.frame(FPR=fpr[fpr.order], TPR=tpr[fpr.order], cutoff=cutoffs[fpr.order])
+}
+
+#' Plot a ROC curve.
+#' @param df A dataframe as returned by makeROC
+#' @param dynamic.axis If the axis should be adjusted s.t. only visible values
+#'                     are shown.
+#' @export
+plotROC <- function(df, dynamic.axis=TRUE) {
+    p <- ggplot(res) +
+        geom_point(aes(x=FPR, y=TPR, size=cutoff), alpha=0.5) +
+        geom_line(aes(x=FPR, y=TPR)) +
+        geom_abline(slop=1, linetype='dashed') +
+        xlab('FPR | (1 - specificity)') +
+        ylab('TPR | sensitivity')
+    if (!dynamic.axis) {
+        p <- p +
+            scale_x_continuous(limits=c(0, 1)) +
+            scale_y_continuous(limits=c(0, 1))
+    }
+    print(p)
+    p
+}
