@@ -109,19 +109,34 @@ assessComplexFeatures <- function(true.positive.features,
 
 
 #' Read a TSV file where each row corresponds to an annotated complex. 
-#' The table must have the columns: 'complex_id', 'apexes_fully_observed',
-#' 'apexes_partially_observed'. The numbers within the apex columns have to be
+#' The table must have the columns (in that order):
+#' - 'complex_id',
+#' - 'apexes_fully_observed'
+#' - 'apexes_partially_observed'.
+#' - 'n_proteins_in_complex'
+#' - 'n_proteins_in_complete_complex'
+#' The numbers within the apex columns have to be
 #' comma-separated and should not be surrounded by whitespace.
 #' 
 #' @param fname The filename of the TSV file.
-#' @return A data.table.
+#' @return A list of two data.tables:
+#'         The component 'annotations' holds the individual annotations.
+#'         Whereas 'complexes' holds information about the complex'
+#'         completeness.
 #'
 #' @export
 readManualAnnotationFile <- function(fname) {
-    annot <- fread(fname, sep='\t', sep2=',', colClasses=rep('character', 3))
-    setnames(annot, c('complex_id', 'apexes_fully_observed',
-                      'apexes_partially_observed'))
-    annot
+    annot <- fread(fname, sep='\t', sep2=',',
+                   colClasses=c(rep('character', 3), rep('numeric', 2)))
+    setnames(annot, c('complex_id',
+                      'apexes_fully_observed',
+                      'apexes_partially_observed',
+                      'n_proteins_in_complex',
+                      'n_proteins_in_complete_complex'))
+    list(annotations=annot[, list(complex_id, apexes_fully_observed,
+                                  apexes_partially_observed)],
+         complexes=annot[, list(complex_id, n_proteins_in_complex,
+                                n_proteins_in_complete_complex)])
 }
 
 
@@ -153,7 +168,8 @@ apexStringToDF <- function(complex.id, sep.apexes, apex.type) {
 #' @examples
 #' manual.annotations.raw <- readManualAnnotationFile('somefile.tsv)
 #' manual.annotations <-
-#'     createManualComplexAnnotations(manual.annotations, 'apexes_partially_observed') 
+#'     createManualComplexAnnotations(manual.annotations.raw$annotations, 
+#'                                    'apexes_partially_observed') 
 #' 
 #' @export
 createManualComplexAnnotations <- function(annotations, apex.col.name) {
@@ -202,9 +218,11 @@ stopifnot(setequal(mergeRTs(c(3, 2), integer(0)), c(3, 2)))
 #' manual.annotations.1.raw <- readManualAnnotationFile(annotations.1.raw)
 #' manual.annotations.2.raw <- readManualAnnotationFile(annotations.2.raw)
 #' manual.annotations.1 <-
-#'     createManualComplexAnnotations(manual.annotations.1.raw, 'apexes_partially_observed') 
+#'     createManualComplexAnnotations(manual.annotations.1.raw$annotations,
+#'                                    apexes_partially_observed') 
 #' manual.annotations.2 <-
-#'     createManualComplexAnnotations(manual.annotations.2.raw, 'apexes_partially_observed') 
+#'     createManualComplexAnnotations(manual.annotations.2.raw$annotations, 
+#'                                    'apexes_partially_observed') 
 #' manual.annotations <- mergeManualComplexAnnotations(manual.annotations.1,
 #'                                                     manual.annotations.2)
 #'
