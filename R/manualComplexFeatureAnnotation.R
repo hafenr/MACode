@@ -37,50 +37,63 @@ assessComplexFeatures <- function(true.positive.features,
     possible.rt <- seq(min.rt, max.rt)
 
     do.call(rbind, lapply(complex.ids, function(cid) {
-        rt.true <- true.positive.features[complex_id == cid, ]$rt
-        rt.exp <- round(detected.features[complex_id == cid, ]$center_rt, 0)
         # Declare integer vectors of true positives/false positives/false
-        # negatives that are build up in the following loops.
+        # negatives/true negatives/ that are build up in the following loops.
         TPs <- integer(0)
         FPs <- integer(0)
         FNs <- integer(0)
-        # Check for each experimentally found feature, i.e. RT...
-        for (t.exp in rt.exp) {
-            most.proximate.true.rt <- integer(0)
-            smallest.delta.encountered <- Inf
-            # Is the experimental rt close to some of the annotated ones?
-            for(t.true in rt.true) {
-                t.delta <- abs(t.true - t.exp)
-                if (t.delta <= feature.vicinity.tol
-                        && t.delta < smallest.delta.encountered) {
-                    # This is the closest annotated RT to the experimental one.
-                    # Save it.
-                    most.proximate.true.rt <- t.true
+        TNs <- integer(0)
+
+        rt.true <- true.positive.features[complex_id == cid, ]$rt
+        rt.exp <- round(detected.features[complex_id == cid, ]$center_rt, 0)
+        is.decoy.complex <- grepl('^DECOY', cid)
+
+        # If this complex is a decoy complex, all of the detected features are
+        # automatically false positives.
+        if (is.decoy.complex) {
+            FPs <- c(FPs, rt.exp)
+        # Not a decoy complex, need to check each detected feature separately.
+        } else {
+            # Check for each feature RT...
+            for (t.exp in rt.exp) {
+                most.proximate.true.rt <- integer(0)
+                smallest.delta.encountered <- Inf
+                # is the experimental rt close to some of the annotated ones?
+                for(t.true in rt.true) {
+                    t.delta <- abs(t.true - t.exp)
+                    if (t.delta <= feature.vicinity.tol
+                            && t.delta < smallest.delta.encountered) {
+                        # This is the closest annotated RT to the experimental one.
+                        # Save it.
+                        most.proximate.true.rt <- t.true
+                        smallest.delta.encountered <- t.delta
+                    }
+                }
+                # Check if there was any annotated value that could be assigned to this
+                # experimental rt.
+                no.corresponding.true.rt.found <- length(most.proximate.true.rt) == 0
+                if (no.corresponding.true.rt.found) {
+                    # No, this must be a false positive.
+                    FPs <- c(FPs, t.exp)
+                } else {
+                    # Yes, this must be a true positive.
+                    TPs <- c(TPs, t.exp)
+                    # Remove the annotated vaue from the list so that it won't get
+                    # assigned to another feature rt of the same complex.
+                    # rt.true <- setdiff(rt.true, most.proximate.true.rt)
                 }
             }
-            # Check if there was any annotated value that could be assigned to this
-            # experimental rt.
-            no.corresponding.true.rt.found <- length(most.proximate.true.rt) == 0
-            if (no.corresponding.true.rt.found) {
-                # No, this must be a false positive.
-                FPs <- c(FPs, t.exp)
-            } else {
-                # Yes, this must be a true positive.
-                TPs <- c(TPs, t.exp)
-                # Remove the annotated vaue from the list so that it won't get
-                # assigned to another feature rt of the same complex.
-                # rt.true <- setdiff(rt.true, most.proximate.true.rt)
-            }
+            # All those annotated RT values that were not assigned (i.e. were also not
+            # removed from the original array) by the setdiff call above are by
+            # definition false negatives.
+            FNs <- rt.true
+            TNs <- setdiff(possible.rt, c(TPs, FPs, FNs))
+            # The true negatives would be all theoretical complexes that aren't in TP.
         }
-        # All those annotated RT values that were not assigned (i.e. were also not
-        # removed from the original array) by the setdiff call above are by
-        # definition false negatives.
-        FNs <- rt.true
-        TNs <- setdiff(possible.rt, c(TPs, FPs, FNs))
-        # The true negatives would be all theoretical complexes that aren't in TP.
-
         # Build a dataframe of the feature rts and add a character indicator
         # flag to what type they belong. 
+        # The if expression takes care of the situation where one of the rt
+        # vectors has length 0. In that case the whole DF should have 0 rows.
         classifed.rts <- rbind(
             data.frame(rt=FNs, type=(if (length(FNs) > 0) fac('FN') else character(0))),
             data.frame(rt=TPs, type=(if (length(TPs) > 0) fac('TP') else character(0))),
