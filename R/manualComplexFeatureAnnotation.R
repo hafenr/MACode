@@ -7,36 +7,47 @@
 #' retention times that are flagged with either 'FP', 'TP', 'TN', or 'FN'.
 #' 
 #' @param true.positive.features data.table of true, manually annotated features.
-#' The DF must have the columns: 'complex_id', 'rt'.
+#'        The DF must have the columns: 'complex_id', 'rt'.
 #' @param detected.features data.table of detected features.
-#' The DF must have the columns: 'complex_id', 'center_rt'.
+#'        The DF must have the columns: 'complex_id', 'center_rt'.
 #' @param feature.vicinity.tol A number that indicates how close an
-#' experimentally determined feature has to be to a manually annotated one, to
-#' still count as a true positive.
+#'        experimentally determined feature has to be to a manually annotated one, to
+#'        still count as a true positive.
+#'        experimentally determined feature has to be to a manually annotated one, to
+#'        still count as a true positive.
+#' @param all.complexes A list of unique complex ids that should be checked for
+#'        features. Every SEC position for each of those
+#'        complexes will be checked for a detected feature.
 #' @return A data.table with the columns: 'complex_id', 'rt', 'type', where
-#' type is of type character an is either 'FP', 'FN', 'TP', 'TN'.
+#'         type is of type character an is either 'FP', 'FN', 'TP', 'TN'.
 #' 
 #' @examples 
 #' manual.annotations.raw <- readManualAnnotationFile(annotations.1.raw)
 #' manual.annotations <-
-#'     createManualComplexAnnotations(manual.annotations.1.raw, 'apexes_partially_observed') 
+#'     createManualComplexAnnotations(
+#'      manual.annotations.1.raw, 'apexes_partially_observed') 
 #' detected.features <- fread('cprophet_output/sec_complexes.tsv')
-#' assessed.feats <- assessComplexFeatures(manual.annotations, detected.features)
+#' assessed.feats <-
+#'     assessComplexFeaturesWithSEC(manual.annotations,
+#'                                  detected.features, all.complexes)
 #' 
 #' @export
-assessComplexFeatures <- function(true.positive.features,
+assessComplexFeaturesWithSEC <- function(true.positive.features,
                                   detected.features,
+                                  all.complexes,
                                   min.rt, max.rt,
                                   feature.vicinity.tol=5) {
     complex.ids <- unique(detected.features$complex_id)
     # Helper function to create factors for true positives etc. 
+
     fac <- function(t) {
         factor(t, levels=c('TN', 'FN', 'TP', 'FP'))
     }
     # All possible RTs where a feature could elute
     possible.rt <- seq(min.rt, max.rt)
 
-    do.call(rbind, lapply(complex.ids, function(cid) {
+    do.call(rbind, lapply(theoretically.possible.complexes,
+                          function(cid) {
         # Declare integer vectors of true positives/false positives/false
         # negatives/true negatives/ that are build up in the following loops.
         TPs <- integer(0)
@@ -48,12 +59,29 @@ assessComplexFeatures <- function(true.positive.features,
         rt.exp <- round(detected.features[complex_id == cid, ]$center_rt, 0)
         is.decoy.complex <- grepl('^DECOY', cid)
 
-        # If this complex is a decoy complex, all of the detected features are
-        # automatically false positives.
-        if (is.decoy.complex) {
-            FPs <- c(FPs, rt.exp)
-        # Not a decoy complex, need to check each detected feature separately.
-        } else {
+        features.present <- length(rt.true) != 0
+        features.detected <- length(rt.exp) != 0
+
+        # If there are no manual annotations for this complex and no features
+        # were detected, all features were correctly identified as being
+        # not there, i.e. negative.
+        if (!features.present && !features.detected) {
+            # TNs <- possible.rt
+        }
+        # If there are no features present, but the algorithm detected some
+        # nonetheless, those are false positives.
+        else if (!features.present && features.detected) {
+            FPs <- rt.exp
+            # TNs <- setdiff(possible.rt, rt.exp)
+        }
+        # If there are true features, but the algorithm didn't detect any,
+        # all of those are automatically false negatives.
+        else if (features.present && !features.detected) {
+            FNs <- rt.true
+        }
+        # There are features and some may have been detected,
+        # check which ones are close enough to be a TP.
+        else {
             # Check for each feature RT...
             for (t.exp in rt.exp) {
                 most.proximate.true.rt <- integer(0)
@@ -87,9 +115,11 @@ assessComplexFeatures <- function(true.positive.features,
             # removed from the original array) by the setdiff call above are by
             # definition false negatives.
             FNs <- rt.true
-            TNs <- setdiff(possible.rt, c(TPs, FPs, FNs))
-            # The true negatives would be all theoretical complexes that aren't in TP.
         }
+
+        # The true negatives are all other RTs that aret a FP, FN or TP.
+        TNs <- setdiff(possible.rt, c(TPs, FPs, FNs))
+
         # Build a dataframe of the feature rts and add a character indicator
         # flag to what type they belong. 
         # The if expression takes care of the situation where one of the rt
@@ -106,6 +136,34 @@ assessComplexFeatures <- function(true.positive.features,
         as.data.table(classifed.rts)
     }))
 }
+
+
+assessComplexFeatures <- function(true.positive.features,
+                                  detected.features,
+                                  n.all.complexes) {
+    detected.features[, is_decoy := grepl('^DECOY', complex_id)]
+
+    complex.ids.true <- unique(true.positive.features$complex_id)
+    complex.ids.detected <- unique(detected.features$complex_id)
+    complex.ids.detected.target <-
+        unique(detected.features[is_decoy == F, complex_id])
+    complex.ids.detected.decoy <-
+        unique(detected.features[is_decoy == T, complex_id])
+
+    # TP are all manually annotated complexes that were identified
+    TP <- sum(complex.ids.true %in% complex.ids.detected.target)
+    # FN are all manually annotated complexes that were not identified
+    FN <- length(complex.ids.true) - TP
+    # FP are all decoy complexes that were falsely detected as having a feature
+    FP <- length(complex.ids.detected.decoy)
+    # TN are all decoy complexes that weren't falsely detected as having a
+    # feature.
+    # TN <- n_decoys - FP
+    TN <- n.all.complexes - TP - FN - FP
+
+    c(TP=TP, FN=FN, FP=FP, TN=TN)
+}
+
 
 
 #' Read a TSV file where each row corresponds to an annotated complex. 
@@ -266,10 +324,10 @@ calcFPR <- function(dt) {
 #'                             experimental feature has to be to a manually
 #'                             annotated one to count as a true positive
 #' @export
-makeROC <- function(detected.features,
-                    true.positive.features,
-                    cutoffs,
-                    feature.vicinity.tol=5) {
+makeROCWithSEC <- function(detected.features,
+                           true.positive.features,
+                           cutoffs,
+                           feature.vicinity.tol=5) {
     fpr <- numeric(length=length(cutoffs))
     tpr <- numeric(length=length(cutoffs))
     for (i in seq_along(cutoffs)) {
@@ -278,9 +336,10 @@ makeROC <- function(detected.features,
         detected.features.filtered <-
             detected.features[apex_apmw_fit < cval, list(complex_id, center_rt)]
         if (nrow(detected.features.filtered) != 0) {
-            all.features <- assessComplexFeatures(
+            all.features <- assessComplexFeaturesWithSEC(
                 true.positive.features=true.positive.features,
                 detected.features=detected.features.filtered,
+                all.complexes,
                 min.rt=3,
                 max.rt=84,
                 feature.vicinity.tol=5
@@ -297,22 +356,64 @@ makeROC <- function(detected.features,
     data.frame(FPR=fpr[fpr.order], TPR=tpr[fpr.order], cutoff=cutoffs[fpr.order])
 }
 
+
+#' @param detected.features A dataframe with the columns: 'complex_id', 'rt'
+#' @param true.positive.features A dataframe with the columns: 'complex_id', 'rt'
+#' @param cutoffs A numeric vector of apex_mw_fit values that should be used to
+#'                define if a feature passes the molecular weight test or not
+#' @param n.all.complexes Number of complexes that were inputto cprophet's 
+#'        complex detection (this includes decoys).
+#' @export
+makeROC <- function(detected.features,
+                    true.positive.features,
+                    cutoffs,
+                    n.all.complexes) {
+    fpr <- numeric(length=length(cutoffs))
+    tpr <- numeric(length=length(cutoffs))
+    for (i in seq_along(cutoffs)) {
+        cat(sprintf('Calculating TPR/FPR. Iteration: %d\n', i))
+        cval <- cutoffs[i]
+        detected.features.filtered <-
+            detected.features[apex_apmw_fit < cval, list(complex_id, center_rt)]
+        # detected.features.filtered <- detected.features[
+        #     left_apmw_fit >= 0 + cval & right_apmw_fit >= 0 + cval, 
+        #     list(complex_id, center_rt)
+        # ]
+
+        if (nrow(detected.features.filtered) != 0) {
+            counts <- assessComplexFeatures(
+                true.positive.features=true.positive.features,
+                detected.features=detected.features.filtered,
+                n.all.complexes
+            )
+            fpr[i] <- counts['FP'] / (counts['TN'] + counts['FP'])
+            tpr[i] <- counts['TP'] / (counts['TP'] + counts['FN'])
+        } else {
+            fpr[i] <- 0
+            tpr[i] <- 0
+        }
+    }
+    fpr.order <- order(fpr)
+
+    data.frame(FPR=fpr[fpr.order], TPR=tpr[fpr.order], cutoff=cutoffs[fpr.order])
+}
+
+
 #' Plot a ROC curve.
-#' @param df A dataframe as returned by makeROC
+#' @param df A dataframe as returned by makeROCWithSEC
 #' @param dynamic.axis If the axis should be adjusted s.t. only visible values
 #'                     are shown.
 #' @export
 plotROC <- function(df, dynamic.axis=TRUE) {
-    p <- ggplot(res) +
+    p <- ggplot(df) +
         geom_point(aes(x=FPR, y=TPR, size=cutoff), alpha=0.5) +
         geom_line(aes(x=FPR, y=TPR)) +
         geom_abline(slop=1, linetype='dashed') +
         xlab('FPR | (1 - specificity)') +
         ylab('TPR | sensitivity')
     if (!dynamic.axis) {
-        p <- p +
-            scale_x_continuous(limits=c(0, 1)) +
-            scale_y_continuous(limits=c(0, 1))
+        p <- p + scale_x_continuous(limits=c(0, 1)) +
+                 scale_y_continuous(limits=c(0, 1))
     }
     print(p)
     p

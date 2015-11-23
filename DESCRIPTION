@@ -11,5 +11,6 @@ Depends: data.table
 Imports: Rcpp (>= 0.12.1),
     data.table,
     ggplot2,
-    cvTools
+    cvTools,
+    hash
 LinkingTo: Rcpp
