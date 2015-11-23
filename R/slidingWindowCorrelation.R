@@ -1,3 +1,20 @@
+diffScore <- function(trace.mat) {
+    n.traces <- nrow(trace.mat)
+    combination.idx.matrix <- combn(n.traces, 2)
+    correls <- apply(combination.idx.matrix, 2, function(idxs) {
+        trace1 <- trace.mat[idxs[1], ]
+        trace2 <- trace.mat[idxs[2], ]
+        sd(trace1 - trace2)
+    })
+    mean(correls)
+}
+
+pearsonCorrScore <- function(trace.mat) {
+    correls <- cor(t(trace.mat), t(trace.mat))
+    correls <- correls[upper.tri(correls)]
+    mean(correls)
+}
+
 #' Compute the correlation between rows in a matrix considering only a window.
 #' This is a helper method.
 #'
@@ -25,8 +42,8 @@ computeWindowedCorrelation <- function(trace.mat, start.window.idx, window.size)
     # Compute the mean correlation between all the traces within this window.
     # The mean is computed only on the upper triangular matrix.
     correls <- cor(t(window.trace.mat), t(window.trace.mat))
-    correls.upper <- correls[upper.tri(correls)]
-    r <- mean(correls.upper)
+    correls <- correls[upper.tri(correls)]
+    r <- pearsonCorrScore(window.trace.mat)
     # The last values that are within one window are set to the last computed
     # value.
     r
@@ -45,5 +62,6 @@ slidingWindowCorrelation <- function(trace.mat, window.size) {
     corr <- sapply(seq(1, end.index), function(i) {
         computeWindowedCorrelation(trace.mat, i, window.size)
     })
-    c(corr, rep(corr[length(corr)], window.size))
+    all.correls <- c(corr, rep(corr[length(corr)], window.size))
+    all.correls / max(all.correls)
 }
