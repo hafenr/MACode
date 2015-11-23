@@ -41,8 +41,9 @@ computeWindowedCorrelation <- function(trace.mat, start.window.idx, window.size)
 #' a mean correlation within the window at that position.
 #' @export
 slidingWindowCorrelation <- function(trace.mat, window.size) {
-    corr <- sapply(seq(1, ncol(trace.mat)), function(i) {
+    end.index <- ncol(trace.mat) - window.size
+    corr <- sapply(seq(1, end.index), function(i) {
         computeWindowedCorrelation(trace.mat, i, window.size)
     })
-    corr
+    c(corr, rep(corr[length(corr)], window.size))
 }
