@@ -37,7 +37,7 @@ computeWindowedCorrelation <- function(trace.mat, start.window.idx, window.size)
 #' @param trace.mat A numeric matrix where rows correspond to the different
 #' traces.
 #' @param window.size Size of the window. Numeric.
-#' @return A vector of length nrow(trace.mat) where each element corresponds to
+#' @return A vector of length `ncol(trace.mat) where each element corresponds to
 #' a mean correlation within the window at that position.
 #' @export
 slidingWindowCorrelation <- function(trace.mat, window.size) {
