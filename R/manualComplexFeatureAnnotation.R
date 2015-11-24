@@ -222,7 +222,7 @@ apexStringToDF <- function(complex.id, sep.apexes, apex.type) {
 #'                    complex features.
 #' @param apex.col.name The name of the column that holds the retention
 #'                      times.
-#' @returns A data.table with the following columns: 'complex_id', 'rt'.
+#' @return A data.table with the following columns: 'complex_id', 'rt'.
 #' @examples
 #' manual.annotations.raw <- readManualAnnotationFile('somefile.tsv)
 #' manual.annotations <-
