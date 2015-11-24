@@ -4,7 +4,7 @@
 \alias{slidingWindowCorrelation}
 \title{Compute the correlation between rows in a matrix using a sliding window.}
 \usage{
-slidingWindowCorrelation(trace.mat, window.size)
+slidingWindowCorrelation(trace.mat, window.size, score = "pearson")
 }
 \arguments{
 \item{trace.mat}{A numeric matrix where rows correspond to the different
@@ -13,7 +13,7 @@ traces.}
 \item{window.size}{Size of the window. Numeric.}
 }
 \value{
-A vector of length nrow(trace.mat) where each element corresponds to
+A vector of length `ncol(trace.mat) where each element corresponds to
 a mean correlation within the window at that position.
 }
 \description{

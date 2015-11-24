@@ -359,27 +359,26 @@ makeROCWithSEC <- function(detected.features,
 
 #' @param detected.features A dataframe with the columns: 'complex_id', 'rt'
 #' @param true.positive.features A dataframe with the columns: 'complex_id', 'rt'
-#' @param cutoffs A numeric vector of apex_mw_fit values that should be used to
+#' @param params A numeric vector of apex_mw_fit values that should be used to
 #'                define if a feature passes the molecular weight test or not
 #' @param n.all.complexes Number of complexes that were inputto cprophet's 
 #'        complex detection (this includes decoys).
+#' @param subsetFeaturesFunc A function that should receive a feature DT and a
+#'        parameter value. It should return the same DT with some rows removed.
 #' @export
 makeROC <- function(detected.features,
                     true.positive.features,
-                    cutoffs,
-                    n.all.complexes) {
-    fpr <- numeric(length=length(cutoffs))
-    tpr <- numeric(length=length(cutoffs))
-    for (i in seq_along(cutoffs)) {
+                    params,
+                    n.all.complexes,
+                    subsetFeaturesFunc) {
+    fpr <- numeric(length=length(params))
+    tpr <- numeric(length=length(params))
+    for (i in seq_along(params)) {
         cat(sprintf('Calculating TPR/FPR. Iteration: %d\n', i))
-        cval <- cutoffs[i]
+        p <- params[i]
+        detected.features.filtered <- subsetFeaturesFunc(detected.features, p)
         detected.features.filtered <-
-            detected.features[apex_apmw_fit < cval, list(complex_id, center_rt)]
-        # detected.features.filtered <- detected.features[
-        #     left_apmw_fit >= 0 + cval & right_apmw_fit >= 0 + cval, 
-        #     list(complex_id, center_rt)
-        # ]
-
+            detected.features.filtered[, list(complex_id, center_rt)]
         if (nrow(detected.features.filtered) != 0) {
             counts <- assessComplexFeatures(
                 true.positive.features=true.positive.features,
@@ -395,7 +394,7 @@ makeROC <- function(detected.features,
     }
     fpr.order <- order(fpr)
 
-    data.frame(FPR=fpr[fpr.order], TPR=tpr[fpr.order], cutoff=cutoffs[fpr.order])
+    data.frame(FPR=fpr[fpr.order], TPR=tpr[fpr.order], param=params[fpr.order])
 }
 
 
@@ -406,7 +405,7 @@ makeROC <- function(detected.features,
 #' @export
 plotROC <- function(df, dynamic.axis=TRUE) {
     p <- ggplot(df) +
-        geom_point(aes(x=FPR, y=TPR, size=cutoff), alpha=0.5) +
+        geom_point(aes(x=FPR, y=TPR, size=param), alpha=0.5) +
         geom_line(aes(x=FPR, y=TPR)) +
         geom_abline(slop=1, linetype='dashed') +
         xlab('FPR | (1 - specificity)') +

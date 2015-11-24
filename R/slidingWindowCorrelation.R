@@ -22,9 +22,13 @@ pearsonCorrScore <- function(trace.mat) {
 #' traces.
 #' @param start.window.idx Column index where the window starts.
 #' @param window.size Size of the window. Numeric.
+#' @param score The type of correlation to use. A string with value 'pearson'
+#'        or 'diff'.
 #' @return The mean correlation between all traces within this window.
 #' @export
-computeWindowedCorrelation <- function(trace.mat, start.window.idx, window.size) {
+computeWindowedCorrelation <- function(trace.mat, start.window.idx,
+                                       window.size,
+                                       score='pearson') {
     start.window.idx <- min(ncol(trace.mat) - window.size, start.window.idx)
     end.window.idx <- start.window.idx + window.size
     window.trace.mat <- trace.mat[, start.window.idx:end.window.idx]
@@ -43,7 +47,13 @@ computeWindowedCorrelation <- function(trace.mat, start.window.idx, window.size)
     # The mean is computed only on the upper triangular matrix.
     correls <- cor(t(window.trace.mat), t(window.trace.mat))
     correls <- correls[upper.tri(correls)]
-    r <- pearsonCorrScore(window.trace.mat)
+    if (score == 'pearson') {
+        r <- pearsonCorrScore(window.trace.mat)
+    } else if (score == 'diff') {
+        r <- diffScore(window.trace.mat)
+    } else {
+        error(paste('Unknown score:', score))
+    }
     # The last values that are within one window are set to the last computed
     # value.
     r
@@ -57,11 +67,14 @@ computeWindowedCorrelation <- function(trace.mat, start.window.idx, window.size)
 #' @return A vector of length `ncol(trace.mat) where each element corresponds to
 #' a mean correlation within the window at that position.
 #' @export
-slidingWindowCorrelation <- function(trace.mat, window.size) {
+slidingWindowCorrelation <- function(trace.mat, window.size, score='pearson') {
     end.index <- ncol(trace.mat) - window.size
     corr <- sapply(seq(1, end.index), function(i) {
-        computeWindowedCorrelation(trace.mat, i, window.size)
+        computeWindowedCorrelation(trace.mat, i, window.size, score=score)
     })
     all.correls <- c(corr, rep(corr[length(corr)], window.size))
-    all.correls / max(all.correls)
+    if (score == 'diff') {
+        all.correls <- all.correls / max(all.correls)
+    }
+    all.correls
 }

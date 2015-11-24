@@ -3,8 +3,13 @@
 \name{readManualAnnotationFile}
 \alias{readManualAnnotationFile}
 \title{Read a TSV file where each row corresponds to an annotated complex.
-The table must have the columns: 'complex_id', 'apexes_fully_observed',
-'apexes_partially_observed'. The numbers within the apex columns have to be
+The table must have the columns (in that order):
+- 'complex_id',
+- 'apexes_fully_observed'
+- 'apexes_partially_observed'.
+- 'n_proteins_in_complex'
+- 'n_proteins_in_complete_complex'
+The numbers within the apex columns have to be
 comma-separated and should not be surrounded by whitespace.}
 \usage{
 readManualAnnotationFile(fname)
@@ -13,12 +18,20 @@ readManualAnnotationFile(fname)
 \item{fname}{The filename of the TSV file.}
 }
 \value{
-A data.table.
+A list of two data.tables:
+        The component 'annotations' holds the individual annotations.
+        Whereas 'complexes' holds information about the complex'
+        completeness.
 }
 \description{
 Read a TSV file where each row corresponds to an annotated complex.
-The table must have the columns: 'complex_id', 'apexes_fully_observed',
-'apexes_partially_observed'. The numbers within the apex columns have to be
+The table must have the columns (in that order):
+- 'complex_id',
+- 'apexes_fully_observed'
+- 'apexes_partially_observed'.
+- 'n_proteins_in_complex'
+- 'n_proteins_in_complete_complex'
+The numbers within the apex columns have to be
 comma-separated and should not be surrounded by whitespace.
 }
 

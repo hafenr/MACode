@@ -14,9 +14,9 @@ produceComplexAnnotatedProteinTraces(filename.corum.complex.assoc,
 This table must have the columns: 'complex_id', 'protein_id'.}
 
 \item{filename.peptide.traces.long}{The file to the peptide intensity
-This table must have the columns: 'peptide_id', 'sec', 'peptide_intensity',
-and 'protein_id'. 'sec' corresponds to a numeric time value and 'protein_id'
-to the protein that was inferred for this peptide.}
+       This table must have the columns: 'peptide_id', 'sec', 'peptide_intensity',
+       and 'protein_id'. 'sec' corresponds to a numeric time value and 'protein_id'
+       to the protein that was inferred for this peptide.}
 }
 \value{
 A data.table of protein intensity observations.

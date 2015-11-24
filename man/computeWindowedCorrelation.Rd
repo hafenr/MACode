@@ -5,7 +5,8 @@
 \title{Compute the correlation between rows in a matrix considering only a window.
 This is a helper method.}
 \usage{
-computeWindowedCorrelation(trace.mat, start.window.idx, window.size)
+computeWindowedCorrelation(trace.mat, start.window.idx, window.size,
+  score = "pearson")
 }
 \arguments{
 \item{trace.mat}{A numeric matrix where rows correspond to the different
@@ -14,6 +15,9 @@ traces.}
 \item{start.window.idx}{Column index where the window starts.}
 
 \item{window.size}{Size of the window. Numeric.}
+
+\item{score}{The type of correlation to use. A string with value 'pearson'
+or 'diff'.}
 }
 \value{
 The mean correlation between all traces within this window.
