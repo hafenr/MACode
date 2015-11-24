@@ -14,3 +14,4 @@ Imports: Rcpp (>= 0.12.1),
     cvTools,
     hash
 LinkingTo: Rcpp
+LazyData: true
