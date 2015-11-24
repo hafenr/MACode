@@ -42,3 +42,15 @@ produceComplexAnnotatedProteinTraces <- function(filename.corum.complex.assoc,
 
     protein.traces.with.complex
 }
+
+
+#' Convert a wide format peptide trace data.table to long format.
+#' This functionc an be used to convert the included data.table
+#' 'e4.peptide.traces' to long format.
+#' @param dt The wide format data.table.
+#' @return The same data.table in long format.
+#' @export
+widePepTracesToLong <- function(dt) {
+    melt(dt, id.var=c('protein_id', 'peptide_id'),
+         variable.name='sec', value.name='intensity')
+}
