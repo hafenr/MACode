@@ -6,14 +6,13 @@
 peptide intensities into a list of protein intensities that are annotated
 with the complex they MIGHT belong to.}
 \usage{
-produceComplexAnnotatedProteinTraces(peptide.traces,
-  filename.corum.complex.assoc)
+produceComplexAnnotatedProteinTraces(peptide.traces, corum.protein.assoc)
 }
 \arguments{
 \item{peptide.traces}{A wide format peptide trace data.table.}
 
-\item{filename.corum.complex.assoc}{The file to the association TSV file.
-This table must have the columns: 'complex_id', 'protein_id'.}
+\item{corum.complex.assoc}{A DT of protein <-> corum associations.
+This table must have the columns: 'complex_id', 'complex_name', protein_id'.}
 }
 \value{
 A data.table of protein intensity observations with.
@@ -27,6 +26,6 @@ with the complex they MIGHT belong to.
 }
 \examples{
 produceComplexAnnotatedProteinTraces(e4.peptide.traces.wide.filtered,
-                                     'corum_complex_protein_assoc.tsv')
+                                     corum.complex.protein.assoc)
 }
 
