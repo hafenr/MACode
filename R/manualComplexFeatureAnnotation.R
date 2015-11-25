@@ -224,7 +224,7 @@ apexStringToDF <- function(complex.id, sep.apexes, apex.type) {
 #'                      times.
 #' @return A data.table with the following columns: 'complex_id', 'rt'.
 #' @examples
-#' manual.annotations.raw <- readManualAnnotationFile('somefile.tsv)
+#' manual.annotations.raw <- readManualAnnotationFile('somefile.tsv')
 #' manual.annotations <-
 #'     createManualComplexAnnotations(manual.annotations.raw$annotations, 
 #'                                    'apexes_partially_observed') 
@@ -277,7 +277,7 @@ stopifnot(setequal(mergeRTs(c(3, 2), integer(0)), c(3, 2)))
 #' manual.annotations.2.raw <- readManualAnnotationFile(annotations.2.raw)
 #' manual.annotations.1 <-
 #'     createManualComplexAnnotations(manual.annotations.1.raw$annotations,
-#'                                    apexes_partially_observed') 
+#'                                    'apexes_partially_observed') 
 #' manual.annotations.2 <-
 #'     createManualComplexAnnotations(manual.annotations.2.raw$annotations, 
 #'                                    'apexes_partially_observed') 
