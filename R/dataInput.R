@@ -1,26 +1,27 @@
 #' Combine a list of complex <-> protein associations and observations of
 #' peptide intensities into a list of protein intensities that are annotated
 #' with the complex they MIGHT belong to.
+#' @param peptide.traces A wide format peptide trace data.table.
 #' @param filename.corum.complex.assoc The file to the association TSV file.
 #'        This table must have the columns: 'complex_id', 'protein_id'.
-#' @param filename.peptide.traces.long The file to the peptide intensity
-#'        This table must have the columns: 'peptide_id', 'sec', 'peptide_intensity',
-#'        and 'protein_id'. 'sec' corresponds to a numeric time value and 'protein_id'
-#'        to the protein that was inferred for this peptide.
-#'
-#' @return A data.table of protein intensity observations.
+#' @return A data.table of protein intensity observations with. 
+#'         The DT will have the columns: 'protein_id', 'sec', 'intensity',
+#'         'complex_id', and 'complex_name'.
+#' @examples
+#' produceComplexAnnotatedProteinTraces(e4.peptide.traces.wide.filtered,
+#'                                      'corum_complex_protein_assoc.tsv')
 #' @export
-produceComplexAnnotatedProteinTraces <- function(filename.corum.complex.assoc,
-                                                 filename.peptide.traces.long) {
+produceComplexAnnotatedProteinTraces <- function(peptide.traces,
+                                                 filename.corum.complex.assoc) {
+    peptide.traces.long <- widePepTracesToLong(peptide.traces)
+
     # Read corum identifiers
     corum.protein.assoc <-
         fread(filename.corum.complex.assoc, sep='\t',
               stringsAsFactors=FALSE, colClasses=c(complex_id='character'))
 
-    # Read peptide traces and produce protein trace
-    peptide.traces <- fread(filename.peptide.traces.long)
     # Sum peptide traces together to produce the protein traces
-    protein.traces <- setnames(peptide.traces[, sum(peptide_intensity),
+    protein.traces <- setnames(peptide.traces.long[, sum(intensity),
                                by=list(protein_id, sec)],
                       'V1', 'intensity')
 
