@@ -25,7 +25,7 @@ comma-separated strings of numbers, create a long list style DF
 where each row corresponds to a number.
 }
 \examples{
-manual.annotations.raw <- readManualAnnotationFile('somefile.tsv)
+manual.annotations.raw <- readManualAnnotationFile('somefile.tsv')
 manual.annotations <-
     createManualComplexAnnotations(manual.annotations.raw$annotations,
                                    'apexes_partially_observed')

@@ -18,7 +18,7 @@ This table must have the columns: 'complex_id', 'protein_id'.}
 \value{
 A data.table of protein intensity observations with.
         The DT will have the columns: 'protein_id', 'sec', 'intensity',
-        'complex_id', and 'complex_name'.
+        'complex_id', 'complex_name'.
 }
 \description{
 Combine a list of complex <-> protein associations and observations of

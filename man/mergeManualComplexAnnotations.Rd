@@ -27,7 +27,7 @@ manual.annotations.1.raw <- readManualAnnotationFile(annotations.1.raw)
 manual.annotations.2.raw <- readManualAnnotationFile(annotations.2.raw)
 manual.annotations.1 <-
     createManualComplexAnnotations(manual.annotations.1.raw$annotations,
-                                   apexes_partially_observed')
+                                   'apexes_partially_observed')
 manual.annotations.2 <-
     createManualComplexAnnotations(manual.annotations.2.raw$annotations,
                                    'apexes_partially_observed')
