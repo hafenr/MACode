@@ -45,3 +45,9 @@
 #'  \item 83: intensity measurements for sec fraction 83
 #' }
 'e4.peptide.traces.wide'
+
+#' A data.table of associations between corum complexes and their
+#' protein subunits. Complexes that have multiple possible subunit
+#' compositions are split into separate complexes that are numbered
+#' with `-1`, `-2`, etc. suffixes.
+'corum.complex.protein.assoc'
