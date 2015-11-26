@@ -150,16 +150,21 @@ assessComplexFeatures <- function(true.positive.features,
     complex.ids.detected.decoy <-
         unique(detected.features[is_decoy == T, complex_id])
 
+    detected.false.targets <-
+        complex.ids.detected.target[
+            !(complex.ids.detected.target %in% complex.ids.true)
+        ]
+
     # TP are all manually annotated complexes that were identified
-    TP <- sum(complex.ids.true %in% complex.ids.detected.target)
+    TP <- sum(complex.ids.true %in% complex.ids.detected)
     # FN are all manually annotated complexes that were not identified
-    FN <- length(complex.ids.true) - TP
+    FN <- sum(!(complex.ids.true %in% complex.ids.detected))
     # FP are all decoy complexes that were falsely detected as having a feature
-    FP <- length(complex.ids.detected.decoy)
-    # TN are all decoy complexes that weren't falsely detected as having a
-    # feature.
-    # TN <- n_decoys - FP
-    TN <- n.all.complexes - TP - FN - FP
+    # and all target complexes that were identified buy weren't manually
+    # annotated.
+    FP <- sum(!(complex.ids.detected %in% complex.ids.true))
+    # TN are complexes that weren't detected as P and are not FN.
+    TN <- n.all.complexes - (TP + FP + FN)
 
     c(TP=TP, FN=FN, FP=FP, TN=TN)
 }

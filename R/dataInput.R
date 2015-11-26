@@ -47,8 +47,12 @@ produceComplexAnnotatedProteinTraces <- function(peptide.traces,
 #' @return The same data.table in long format.
 #' @export
 widePepTracesToLong <- function(dt) {
-    melt(dt, id.var=c('protein_id', 'peptide_id'),
-         variable.name='sec', value.name='intensity')
+    dt.long <-
+        melt(dt, id.var=c('protein_id', 'peptide_id'),
+             variable.name='sec', value.name='intensity',
+             variable.factor=FALSE)
+    dt.long$sec <- as.numeric(dt.long$sec)
+    dt.long
 }
 
 #' Convert a long list peptide trace to a wide format.
@@ -70,8 +74,11 @@ longProtTracesToWide <- function(dt) {
 #' Convert a wide format protein trace data.table to long format.
 #' @export
 wideProtTracesToLong <- function(dt) {
-    melt(dt,
+    dt.long <- melt(dt,
          id.var=c('protein_id', 'complex_id', 'complex_name'),
          variable.name='sec',
-         value.name='intensity')
+         value.name='intensity',
+         variable.factor=FALSE)
+    dt.long$sec <- as.numeric(dt.long$sec)
+    dt.long
 }
