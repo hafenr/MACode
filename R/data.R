@@ -51,3 +51,20 @@
 #' compositions are split into separate complexes that are numbered
 #' with `-1`, `-2`, etc. suffixes.
 'corum.complex.protein.assoc'
+
+#' The merged manual CORUM annotations with only those features that consist of
+#' a peak group that was fully observed.
+'manual.annotations.full'
+
+#' The merged manual CORUM annotations with only those features that consist of
+#' a peak group that was fully observed.
+#' In addition this dataset holds only those fully observed peak groups that
+#' are also complete in the sense that all protein subunits as annotated in
+#' CORUM are actually part of the peak group.
+'manual.annotations.full.complete'
+
+#' The merged manual CORUM annotations with those features that were partially
+#' observed i.e. some of the proteins that should belong to the CORUM complex
+#' did not take part in the peak group.
+'manual.annotations.partial'
+
