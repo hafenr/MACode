@@ -9,8 +9,6 @@ a peak group that was fully observed.}
  $ complex_id: Factor w/ 591 levels "635","1169","730",..: 1 1 2 2 2 3 3 4 4 5 ...
  $ rt        : num  18 20 12 21 17 11 18 11 18 18 ...
  - attr(*, ".internal.selfref")=<externalptr> 
- - attr(*, "index")= atomic  
-  ..- attr(*, "__complex_id")= int 
 }}
 \usage{
 manual.annotations.full

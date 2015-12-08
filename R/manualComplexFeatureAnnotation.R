@@ -138,6 +138,77 @@ assessComplexFeaturesWithSEC <- function(true.positive.features,
 }
 
 
+#' Annotate complex features using the manually annotated CORUM
+#' complexes.
+#' Each row will get an additional column `is_true_positive`.
+#' @param detected.features A data.table holding the features as output
+#' by cprophet PC.
+#' @param manual.annotations A data.table with the columns 'complex_id', 'rt'.
+#'        The built in data sets like `manual.annotation.full` can be used
+#'        here.
+#' @param feature.vicinity.tol A numeric value that specifies how near an
+#'                             experimental feature has to be to a manually
+#'                             annotated one to count as a true positive
+#' @return The same data.table with a new column 'is_true_positive'.
+annotateComplexFeatures <- function(detected.features,
+                                    manual.annotations,
+                                    with.sec=TRUE,
+                                    feature.vicinity.tol=5) {
+    n.features <- nrow(detected.features)
+    feature.annotations <- detected.features[, list(complex_id)]
+    for (idx in seq(n.features)) {
+        cat(sprintf('Checking complex feature %d / %d', idx, n.features), '\n')
+        cid <- detected.features[idx, complex_id]
+        rt.true <- manual.annotations[complex_id == cid, ]$rt
+        rt.exp <- round(detected.features[complex_id == cid, ]$center_rt, 0)
+
+        features.present <- length(rt.true) != 0
+        features.detected <- length(rt.exp) != 0
+
+        # If there are no features present, but the algorithm detected some
+        # nonetheless, those are false positives.
+        if (!features.present && features.detected) {
+            feature.annotations[complex_id == cid, is_true_positive := FALSE]
+        } else {
+            # Check for each feature of this complex...
+            feats <- detected.features[complex_id == cid, ]
+            is.true.positive <- logical(nrow(feats))
+            for (k in seq(nrow(feats))) {
+                t.exp <- rt.exp[k]
+                most.proximate.true.rt <- integer(0)
+                smallest.delta.encountered <- Inf
+                # is the experimental rt close to some of the annotated ones?
+                for(t.true in rt.true) {
+                    t.delta <- abs(t.true - t.exp)
+                    if (t.delta <= feature.vicinity.tol
+                            && t.delta < smallest.delta.encountered) {
+                        # This is the closest annotated RT to the experimental one.
+                        # Save it.
+                        most.proximate.true.rt <- t.true
+                        smallest.delta.encountered <- t.delta
+                    }
+                }
+                # Check if there was any annotated value that could be assigned to this
+                # experimental rt.
+                no.corresponding.true.rt.found <- length(most.proximate.true.rt) == 0
+                if (no.corresponding.true.rt.found) {
+                    # No, this must be a false positive.
+                    is.true.positive[k] <- FALSE
+                } else {
+                    # Yes, this must be a true positive.
+                    is.true.positive[k] <- TRUE
+                    # Remove the annotated vaue from the list so that it won't get
+                    # assigned to another feature rt of the same complex.
+                    rt.true <- setdiff(rt.true, most.proximate.true.rt)
+                }
+            }
+            feature.annotations[complex_id == cid,
+                                is_true_positive := is.true.positive]
+        }
+    }
+    feature.annotations
+}
+
 assessComplexFeatures <- function(true.positive.features,
                                   detected.features,
                                   n.all.complexes) {

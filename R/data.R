@@ -44,7 +44,7 @@
 #'  \item ... further measurements
 #'  \item 83: intensity measurements for sec fraction 83
 #' }
-'e4.peptide.traces.wide'
+'e4.peptide.traces.wide.filtered'
 
 #' A data.table of associations between corum complexes and their
 #' protein subunits. Complexes that have multiple possible subunit
