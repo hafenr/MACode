@@ -15,8 +15,17 @@
 }}
 \usage{
 e4.peptide.traces.wide
+
+e4.peptide.traces.wide
 }
 \description{
+The settings applied to the raw data are:
+\itemize {
+ \item m_score < 0.01
+ \item no requant values
+ \item no decoy values
+}
+
 The settings applied to the raw data are:
 \itemize {
  \item m_score < 0.01

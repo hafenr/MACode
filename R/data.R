@@ -116,4 +116,4 @@
 
 #' Manual annotations of partial peak groups that whose completeness
 #' was estimated by hierchical clustering of the trace correlation profiles.  
-manual.annotations.partial.imputed.win14.corr0.7
+'manual.annotations.partial.imputed.win14.corr0.7'
