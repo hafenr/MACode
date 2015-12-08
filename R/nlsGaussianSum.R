@@ -217,22 +217,18 @@ nlsGaussianSumCV2 <- function(y, x=seq_along(y), K=3, n.range=1:3, ...) {
 # Example:
 # res = nlsGaussianSumCV(y, K=3, n.range=1:3, with.plot=T)
 
+# peptraces <- widePepTracesToLong(e4.peptide.traces.wide.filtered)
+# prottraces.l <- produceProteinTraces(peptraces)
+# prottraces.wc <- annotateProteinTraces(prottraces.l, corum.complex.protein.assoc)
+# prottraces <- longProtTracesToWide(prottraces.wc)
+# prottraces
+
+# prot <- 'P06576'
+# setkey(prottraces)
+# trace <- as.matrix(subset(unique(prottraces[protein_id == prot]),
+#                           select=-c(1, 2, 3)))[1, ]
 
 
+# plot(trace, type='o')
 
-
-peptraces <- widePepTracesToLong(e4.peptide.traces.wide.filtered)
-prottraces.l <- produceProteinTraces(peptraces)
-prottraces.wc <- annotateProteinTraces(prottraces.l, corum.complex.protein.assoc)
-prottraces <- longProtTracesToWide(prottraces.wc)
-prottraces
-
-prot <- 'P06576'
-setkey(prottraces)
-trace <- as.matrix(subset(unique(prottraces[protein_id == prot]),
-                          select=-c(1, 2, 3)))[1, ]
-
-
-plot(trace, type='o')
-
-res = nlsGaussianSumCV(trace, with.plot=T, K=3, n.range=1:4)
+# res = nlsGaussianSumCV(trace, with.plot=T, K=3, n.range=1:4)
