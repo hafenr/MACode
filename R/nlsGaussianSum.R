@@ -92,7 +92,6 @@ nlsGaussianSum <- function(y, x=seq_along(y), n=1, spar=0.5, with.plot=FALSE) {
                                paste(names(start.params), collapse=', '))
     # Convert this string to a callable expression
     fit.call.expr <- parse(text=fit.call.string)
-    print(start.params)
     # Create a y ~ sumg2(...) formula from the string that can later be passed
     # to the nls function
     fit.call.formula <- as.formula(paste0('y ~ ', fit.call.string))
@@ -104,7 +103,9 @@ nlsGaussianSum <- function(y, x=seq_along(y), n=1, spar=0.5, with.plot=FALSE) {
         lines(x, y.fit.initial, col='gray')
 
     # Lower and uppwer bounds for the parameter (requires algorithm == 'port')
-    param.limits.lower <- rep(c(0, 3, 0), n)
+    min.intensity.factor <- 0.1 * max(y)
+    min.sigma <- 3
+    param.limits.lower <- rep(c(min.intensity.factor, min.sigma, 0), n)
     param.limits.upper <- rep(c(1.5 * max(y), 30, 80), n)
     cat('Parameter limits:\nlower: ', param.limits.lower,
         '\nupper: ',
@@ -131,8 +132,17 @@ nlsGaussianSum <- function(y, x=seq_along(y), n=1, spar=0.5, with.plot=FALSE) {
         }
     }
 
+    gaussian.sum.fit <-
+        list(nls=fit,
+             sumg=sumg,
+             params=pars)
+    class(gaussian.sum.fit) <- 'nlsGaussianSum'
     # Return the fitted model
-    fit
+    gaussian.sum.fit
+}
+
+predict.nlsGaussianSum <- function(fit, x) {
+    do.call(fit$sumg, c(list(x), as.list(fit$params)))
 }
 
 #' Choose the best number of gaussian components automatically using K-fold
@@ -150,6 +160,11 @@ nlsGaussianSumCV <- function(y, x=seq_along(y), K=3, n.range=1:3,
                              ...) {
     res <- cvTuning(nlsGaussianSum, x=x, y=y,
                     tuning=list(n=n.range),
+                    cost=function(obs, pred){
+                        err = sqrt(mean((obs - pred)^2))
+                        cat('ERROR:\t', err, '\n')
+                        err
+                    },
                     args=list(...),
                     K=K)
     # Refit the model using the number of components that led to the
@@ -158,5 +173,66 @@ nlsGaussianSumCV <- function(y, x=seq_along(y), K=3, n.range=1:3,
     nlsGaussianSum(y=y, x=x, n=best.n, ...)
 }
 
+
+#' Choose the best number of gaussian components automatically using K-fold
+#' cross validation. The best performing model is refitted and returned.
+#'
+#' @param y The intensity values on which to fit.
+#' @param x The associated x values. Optional.
+#' @param K The number of cross validation folds to perform. Larger numbers
+#' yield better error estimates.
+#' @param n.range A numeric vector of n values that should be evaluated.
+#' @return The fitted nls model that performed best.
+#'
+#' @export
+nlsGaussianSumCV2 <- function(y, x=seq_along(y), K=3, n.range=1:3, ...) {
+    folds <- cvFolds(length(y), K=K)
+    errors <- matrix(0, nrow=length(n.range), ncol=K)
+
+    for (i in 1:length(n.range)) {
+        n <- n.range[i]
+
+        for (k in 1:K) {
+            is.training <- folds$which != k
+            is.test <- folds$which == k
+
+            y.train <- y[is.training]
+            x.train <- x[is.training]
+            y.test <- y[is.test]
+            x.test <- x[is.test]
+
+            fit <- nlsGaussianSum(y.train, n=n, with.plot=T)
+            y.pred <- predict(fit, x.test)
+            err <- sqrt(mean((y.pred - y.test)^2))
+            errors[i, k] <- err
+        }
+    }
+
+    errs <- rowMeans(errors)
+    best.n <- n.range[which.min(errs)]
+    nlsGaussianSum(y, x, n=best.n, with.plot=T)
+}
+
+
 # Example:
 # res = nlsGaussianSumCV(y, K=3, n.range=1:3, with.plot=T)
+
+
+
+
+
+peptraces <- widePepTracesToLong(e4.peptide.traces.wide.filtered)
+prottraces.l <- produceProteinTraces(peptraces)
+prottraces.wc <- annotateProteinTraces(prottraces.l, corum.complex.protein.assoc)
+prottraces <- longProtTracesToWide(prottraces.wc)
+prottraces
+
+prot <- 'P06576'
+setkey(prottraces)
+trace <- as.matrix(subset(unique(prottraces[protein_id == prot]),
+                          select=-c(1, 2, 3)))[1, ]
+
+
+plot(trace, type='o')
+
+res = nlsGaussianSumCV(trace, with.plot=T, K=3, n.range=1:4)
