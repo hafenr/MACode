@@ -9,7 +9,7 @@
 #' prottraces.wc <- annotateProteinTraces(prottraces, corum.complex.protein.assoc)
 #' plotTraces(prottraces.wc[complex_id == 635], 'protein_id', 'complex_id',
 #'            'Complex 635')
-plotTraces <- function(traces.dt, subunit.id.col, parent.id.col, title) {
+plotTraces <- function(traces.dt, subunit.id.col, parent.id.col, title='') {
     p <- ggplot(traces.dt) +
                 geom_point(aes_string(x='sec', y='intensity',
                                       color=subunit.id.col)) +
