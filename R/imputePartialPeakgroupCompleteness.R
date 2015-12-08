@@ -86,7 +86,7 @@ imputePartialPeakgroupCompletness <- function(manual.annotations.partial,
         trace.mat.full <- as.matrix(subset(traces.wide, select=is.sec.col))
         manual.annotations.partial[
             complex_id == complex.id,
-            n_subunits_annotated := nrow(trace.mat.full)
+            n_proteins_in_complete_complex := nrow(trace.mat.full)
         ]
 
         for (rt in rts) {
@@ -97,9 +97,15 @@ imputePartialPeakgroupCompletness <- function(manual.annotations.partial,
                                        corr.cutoff=corr.cutoff)
             manual.annotations.partial[
                 complex_id == complex.id & rt == rt,
-                max_group_size := max.group.size
+                n_proteins_in_complex := max.group.size
             ]
         }
     }
     manual.annotations.partial
+}
+
+produceFinalManualAnnotations <- function() {
+    manual.annotations.1.raw$complexes
+
+    manual.annotations.partial.imputed.win14.corr0.7
 }
