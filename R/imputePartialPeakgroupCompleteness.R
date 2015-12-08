@@ -1,13 +1,3 @@
-require(devtools)
-require('proxy')
-devtools::load_all('~/Dev/MACode')
-
-
-peptraces <- widePepTracesToLong(e4.peptide.traces.wide.filtered)
-prottraces <- produceProteinTraces(peptraces)
-prottraces.wc <- annotateProteinTraces(prottraces, corum.complex.protein.assoc)
-
-
 calcNCorrelatingTraces <- function(trace.mat, rt, window.size=14, corr.cutoff=0.7) {
     # Extract the submatrix from the full trace matrix
     window.size.half <- floor(window.size / 2)
