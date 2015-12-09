@@ -112,6 +112,7 @@
 #'  \item manual.annotations.full
 #'  \item manual.annotations.full.complete
 #' }
+#' 
 'manual.annotations.raw.mheusel'
 
 #' Manual annotations of partial peak groups that whose completeness
