@@ -105,7 +105,25 @@ imputePartialPeakgroupCompletness <- function(manual.annotations.partial,
 }
 
 produceFinalManualAnnotations <- function() {
-    manual.annotations.1.raw$complexes
+    completness.info <- manual.annotations.raw.rhafen[,
+        list(complex_id, n_proteins_in_complex,
+             n_proteins_in_complete_complex)]
 
-    manual.annotations.partial.imputed.win14.corr0.7
+    manual.annotations.full.w.completness <-
+        merge(manual.annotations.full, completness.info, all.x=TRUE, by='complex_id')
+    manual.annotations.full.w.completness[, completeness := 'full']
+
+    manual.annotations.partial <- manual.annotations.partial.imputed.win14.corr0.7
+    manual.annotations.partial[, completeness := 'partial']
+
+    manual.annotations.final <- rbind(
+        manual.annotations.full.w.completness,
+        manual.annotations.partial)
+
+     manual.annotations.final[, min_2_proteins := n_proteins_in_complex >= 2]
+     manual.annotations.final[ ,
+        min_50_percent := n_proteins_in_complex >= 0.5 * n_proteins_in_complete_complex]
+     manual.annotations.final <- manual.annotations.final[min_50_percent & min_2_proteins]
+     subset(manual.annotations.final,
+            select=!(colnames(manual.annotations.final) %in% c('min_2_proteins', 'min_50_percent')))
 }
