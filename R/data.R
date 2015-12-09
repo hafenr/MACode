@@ -118,3 +118,9 @@
 #' Manual annotations of partial peak groups that whose completeness
 #' was estimated by hierchical clustering of the trace correlation profiles.  
 'manual.annotations.partial.imputed.win14.corr0.7'
+
+#' A list of all proteins that are found in the traces table
+#' e4.peptide.traces.wide. Each protein has a protein_mw that is taken from
+#' UniProt and a protein_concentration that is either imputed or computed by
+#' aLFQ.
+'e4.input.proteins'
