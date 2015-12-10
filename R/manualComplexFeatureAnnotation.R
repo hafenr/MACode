@@ -155,24 +155,24 @@ annotateComplexFeatures <- function(detected.features,
                                     with.sec=TRUE,
                                     feature.vicinity.tol=5) {
     n.features <- nrow(detected.features)
-    feature.annotations <- detected.features[, list(complex_id)]
+    feature.annotations <- detected.features
     for (idx in seq(n.features)) {
-        cat(sprintf('Checking complex feature %d / %d', idx, n.features), '\n')
+        cat(sprintf('Comparing complex feature to manual annotations (%d / %d)', idx, n.features), '\n')
         cid <- detected.features[idx, complex_id]
         rt.true <- manual.annotations[complex_id == cid, ]$rt
-        rt.exp <- round(detected.features[complex_id == cid, ]$center_rt, 0)
+        # rt.exp <- round(detected.features[complex_id == cid, ]$center_rt, 0)
+        rt.exp <- detected.features[complex_id == cid, ]$center_rt
 
         features.present <- length(rt.true) != 0
         features.detected <- length(rt.exp) != 0
 
         # If there are no features present, but the algorithm detected some
-        # nonetheless, those are false positives.
+        # nonetheless, those are false positives regardless of their RT.
         if (!features.present && features.detected) {
             feature.annotations[complex_id == cid, is_true_positive := FALSE]
         } else {
             # Check for each feature of this complex...
             feats <- detected.features[complex_id == cid, ]
-            is.true.positive <- logical(nrow(feats))
             for (k in seq(nrow(feats))) {
                 t.exp <- rt.exp[k]
                 most.proximate.true.rt <- integer(0)
@@ -193,17 +193,20 @@ annotateComplexFeatures <- function(detected.features,
                 no.corresponding.true.rt.found <- length(most.proximate.true.rt) == 0
                 if (no.corresponding.true.rt.found) {
                     # No, this must be a false positive.
-                    is.true.positive[k] <- FALSE
+                    feature.annotations[complex_id == cid & center_rt == t.exp,
+                                        is_true_positive := FALSE]
                 } else {
                     # Yes, this must be a true positive.
-                    is.true.positive[k] <- TRUE
+                    feature.annotations[complex_id == cid & center_rt == t.exp,
+                                        is_true_positive := TRUE]
                     # Remove the annotated vaue from the list so that it won't get
                     # assigned to another feature rt of the same complex.
                     rt.true <- setdiff(rt.true, most.proximate.true.rt)
                 }
             }
-            feature.annotations[complex_id == cid,
-                                is_true_positive := is.true.positive]
+        }
+        if (any(is.na(feature.annotations[complex_id == cid, is_true_positive]))) {
+            browser()
         }
     }
     feature.annotations
