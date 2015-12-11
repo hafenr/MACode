@@ -156,6 +156,17 @@ annotateComplexFeatures <- function(detected.features,
                                     feature.vicinity.tol=5) {
     n.features <- nrow(detected.features)
     feature.annotations <- detected.features
+    # Remove features that have a center_rt that is within 1 unit.
+    # If those features are not removed, only one of them can be a TP, all
+    # others will be FP. Since each SEC number that is not TRUE is FALSE, we
+    # have to evaluate RTs on an integer basis. Otherwise the calculation
+    # ALL_SEC_OF_ALL_COMPLEXES - TP - FP - FN will not equal TN, since FP might
+    # be arbitrarily large.
+    feature.annotations[, center_rt := round(center_rt, 0)]
+    # TODO: Now to something like, but this doesn't work
+    setkey(feature.annotations, c('complex_id', 'center_rt'))
+    feature.annotations <- unique(feature.annotations)
+    false.negatives <- list()
     for (idx in seq(n.features)) {
         cat(sprintf('Comparing complex feature to manual annotations (%d / %d)', idx, n.features), '\n')
         cid <- detected.features[idx, complex_id]
@@ -204,12 +215,25 @@ annotateComplexFeatures <- function(detected.features,
                     rt.true <- setdiff(rt.true, most.proximate.true.rt)
                 }
             }
+            # If there are true RTs left that weren't assigned, then save them
+            # since they are false negatives.
+            if (length(rt.true) > 0) {
+                false.negatives[[cid]] <- data.table(complex_id=cid, rt=rt.true)
+            }
         }
         if (any(is.na(feature.annotations[complex_id == cid, is_true_positive]))) {
             browser()
         }
     }
-    feature.annotations
+    # Convert the list of false negatives to a DT
+    if (length(false.negatives) == 0) {
+        false.negatives <- data.table(complex_id=character(0),
+                                      rt=numeric(length=0))
+    } else {
+        false.negatives <- do.call(rbind, false.negatives)
+    }
+    list(annotated.features=feature.annotations,
+         false.negatives=false.negatives)
 }
 
 assessComplexFeatures <- function(true.positive.features,
@@ -496,3 +520,26 @@ plotROC <- function(df, dynamic.axis=TRUE) {
     print(p)
     p
 }
+
+
+annotateComplexFeaturesAlt <- function(detected.features,
+                                       manual.annotations,
+                                       feature.vicinity.tol=5) {
+    # Check for each of those complexes how many of its features actually have
+    # a manual annotation nearby.
+    detected.features <- detected.features
+    n.close.enough.rts <- sapply(unique(detected.features$complex_id), function(cid) {
+        cat('Computing site localization rate for complex ', cid, '\n')
+
+        rt.true <- manual.annotations[complex_id == cid, ]$rt
+        rt.exp <- detected.features[complex_id == cid, ]$center_rt
+
+        for (rt in rt.exp) {
+            has.close.enough.manual.rt <- any(abs((rt - rt.true)) <= feature.vicinity.tol)
+            detected.features[complex_id == cid & center_rt == rt,
+                              is_true_positive := has.close.enough.manual.rt]
+        }
+    })
+    detected.features
+}
+
