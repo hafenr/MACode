@@ -84,3 +84,36 @@ wideProtTracesToLong <- function(dt) {
     dt.long$sec <- as.numeric(dt.long$sec)
     dt.long
 }
+
+#' Convert a peptide trace matrix as is input to cprophet to the same matrix
+#' that associates peptides to complexes, rather than to proteins.
+#' The result of this transformation can then be used as the input for a CC
+#' workflow that tries to create complex features directly from peptides.
+#' @param pc.input The data.table that is normally input to cprophet. It has
+#' columns: \itemize{
+#'  \item peptide_id
+#'  \item protein_id
+#'  \item The remaining columns run across the SEC dimension.
+#' }
+#' @export
+convertToPeptideCCData <- function(pc.input) {
+    pep.prot.assoc <- pc.input[, list(peptide_id, protein_id)]
+    complex.prot.assoc <- corum.complex.protein.assoc[, list(complex_id, protein_id)]
+    pep.compl.assoc <-
+        subset(merge(pep.prot.assoc, complex.prot.assoc, by='protein_id',
+               allow.cartesian=T),
+               select=-protein_id)
+
+    pep.traces <- subset(merge(pc.input, complex.prot.assoc, by='protein_id',
+                               allow.cartesian=T),
+                         select=-protein_id)
+    cols <- colnames(pep.traces)
+    setcolorder(pep.traces, c(cols[1], cols[length(cols)],
+                              cols[2:(ncol(pep.traces)-1)]))
+    setnames(pep.traces, 'complex_id', 'protein_id')
+    write.table(pep.traces,
+                '~/Dev/cprophet/data/e4_peptides_mscore_lt_1percent_no_requant_no_decoy_wide_CC_PEPTIDES.tsv',
+                sep='\t',
+                row.names=F)
+}
+
