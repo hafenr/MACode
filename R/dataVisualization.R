@@ -1,3 +1,5 @@
+#' Plot traces for a single complex or protein.
+#'
 #' @param traces.dt A long list style data.table holding the traces.
 #' @param subunit.id.col A string giving the name of the subunit column.  
 #' @param subunit.id.col A string giving the name of the parent column.  
@@ -9,6 +11,7 @@
 #' prottraces.wc <- annotateProteinTraces(prottraces, corum.complex.protein.assoc)
 #' plotTraces(prottraces.wc[complex_id == 635], 'protein_id', 'complex_id',
 #'            'Complex 635')
+#' @export
 plotTraces <- function(traces.dt, subunit.id.col, parent.id.col, title='') {
     p <- ggplot(traces.dt) +
                 geom_point(aes_string(x='sec', y='intensity',
