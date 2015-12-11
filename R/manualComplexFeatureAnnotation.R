@@ -521,7 +521,11 @@ plotROC <- function(df, dynamic.axis=TRUE) {
     p
 }
 
-
+#' Annotate complex features by simply checking if there is a manual annotation
+#' nearby. This function is faster than `annotateComplexFeatures`, which loops
+#' through all the annotations and ensures that only one detected feature can
+#' be assigned to one manually annotated feature. 
+#' @export
 annotateComplexFeaturesAlt <- function(detected.features,
                                        manual.annotations,
                                        feature.vicinity.tol=5) {
@@ -529,7 +533,7 @@ annotateComplexFeaturesAlt <- function(detected.features,
     # a manual annotation nearby.
     detected.features <- detected.features
     n.close.enough.rts <- sapply(unique(detected.features$complex_id), function(cid) {
-        cat('Computing site localization rate for complex ', cid, '\n')
+        cat('Comparing features to manual annotations. Current complex: ', cid, '\n')
 
         rt.true <- manual.annotations[complex_id == cid, ]$rt
         rt.exp <- detected.features[complex_id == cid, ]$center_rt
