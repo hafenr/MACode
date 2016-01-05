@@ -251,7 +251,9 @@ deconvProteinTraces <- function(protein.traces, n.cores=2, K=3, n.range=1:4) {
             subset(protein.traces[i, ],
             select=-c(protein_id, complex_id))
         )[1, ]
-        res = nlsGaussianSumCV(ptrace, K=K, n.range=n.range, with.plot=T)
+        res = try({
+            nlsGaussianSumCV(ptrace, K=K, n.range=n.range, with.plot=T)
+        })
         res
     }
     pfeatures
