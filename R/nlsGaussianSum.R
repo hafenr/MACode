@@ -72,7 +72,7 @@ makeStartParams <- function(n.components, max.x, max.y) {
 #'
 #' @export
 nlsGaussianSum <- function(y, x=seq_along(y), n=1, spar=0.5,
-nlsGaussianSum                           with.plot=FALSE, quiet=TRUE) {
+                           with.plot=FALSE, quiet=TRUE) {
     # Get the right fitting function from the environment dynamically
     sumg <- get(sprintf('sumg%d', n))
     if (with.plot)
@@ -249,7 +249,7 @@ deconvProteinTraces <- function(protein.traces, n.cores=2, K=3, n.range=1:4) {
         # Convert row of DT to vector
         ptrace = as.matrix(
             subset(protein.traces[i, ],
-            select=-c(protein_id, complex_id))
+            select=-protein_id
         )[1, ]
         res = try({
             nlsGaussianSumCV(ptrace, K=K, n.range=n.range, with.plot=T)
@@ -287,4 +287,19 @@ deconvProteinTraces <- function(protein.traces, n.cores=2, K=3, n.range=1:4) {
 
 # res = nlsGaussianSumCV(trace, with.plot=T, K=3, n.range=1:4)
 
+# load('/Volumes/rhafen/params.1st.3300.rows.rda')
 
+# features.deconv <- do.call(rbind, lapply(seq_along(params.1st.3300.rows), function(i) {
+#     if (!is.na(params.1st.3300.rows[[i]])) {
+#         params <- params.1st.3300.rows[[i]]$params
+#         n.feats <- length(params) / 3
+#         params.grouped <- split(params, rep(1:n.feats, each=3))
+#         params.df <- as.data.frame(do.call(rbind, params.grouped))
+#         colnames(params.df) <- c('a', 's', 'mu')
+#         params.df$protein_id <- names(params.1st.3300.rows)[i]
+#         params.df$n_features <- n.feats
+#         params.df
+#     } else {
+#         NULL
+#     }
+# }))

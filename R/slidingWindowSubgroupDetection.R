@@ -196,7 +196,7 @@ targetedSW <- function(protein.traces.sw, corr.cutoff=0.99, window.size=15,
 
     registerDoMC(n.cores)
 
-    is.complex.validated <- logical(length(input.complexes.sw))
+    # is.complex.validated <- logical(length(input.complexes.sw))
 
     sw.results <- foreach(i=seq_along(input.complexes.sw)) %dopar% {
         complex.id <- input.complexes.sw[i]
@@ -212,36 +212,43 @@ targetedSW <- function(protein.traces.sw, corr.cutoff=0.99, window.size=15,
         traces.mat <- as.matrix(subset(traces.subs, select=-c(complex_id, protein_id, is_decoy)))
 
         # Run the algorithm
-        res.sw <- detectSubgroupsSW(traces.mat, protein.names, 0.9, window.size=15)
+        try({
+            detectSubgroupsSW(traces.mat, protein.names,
+                              corr.cutoff=corr.cutoff,
+                              window.size=window.size)
+        })
 
         # Get the size of the complex as annotated in CORUM
-        if (!is.decoy.complex) {
-            annotated.complex.size <-
-                corum.complex.protein.assoc[complex_id == complex.id, n_subunits_annotated][1]
-        } else {
-            annotated.complex.size <- nrow(traces.mat)
-        }
+        # if (!is.decoy.complex) {
+        #     if (complex.id %in% corum.complex.protein.assoc$complex_id) {
+        #         annotated.complex.size <-
+        #             corum.complex.protein.assoc[complex_id == complex.id, n_subunits_annotated][1]
+        #     } else {
+        #         annotated.complex.size <- length(protein.names)
+        #     }
+        # } else {
+        #     annotated.complex.size <- nrow(traces.mat)
+        # }
 
-        if (nrow(res.sw$subgroups.dt) > 0) {
-            if (any(res.sw$subgroups.dt$n_subunits >= 0.5 * annotated.complex.size)) {
-                is.complex.validated[i] <- TRUE
-            } else {
-                is.complex.validated[i] <- FALSE
-            }
-        } else {
-            is.complex.validated[i] <- FALSE
-        }
+        # if (nrow(res.sw$subgroups.dt) > 0) {
+        #     if (any(res.sw$subgroups.dt$n_subunits >= 0.5 * annotated.complex.size)) {
+        #         is.complex.validated[i] <- TRUE
+        #     } else {
+        #         is.complex.validated[i] <- FALSE
+        #     }
+        # } else {
+        #     is.complex.validated[i] <- FALSE
+        # }
 
-        cat('Complex', complex.id, 'was found to be', is.complex.validated[i], '\n')
-        cat('Is manually annotated? ==>', complex.id %in% manual.annotations.final$complex_id, '\n')
-        if (is.decoy.complex) {
-            cat('==> DECOY\n')
-        }
+        # cat('Complex', complex.id, 'was found to be', is.complex.validated[i], '\n')
+        # cat('Is manually annotated? ==>', complex.id %in% manual.annotations.final$complex_id, '\n')
+        # if (is.decoy.complex) {
+        #     cat('==> DECOY\n')
+        # }
     }
 
     res <- list(sw_results=sw.results,
          input_complexes=input.complexes.sw,
-         is.complex.validated=is.complex.validated,
          corr.cutoff=corr.cutoff,
          window.size=window.size)
 
@@ -275,7 +282,7 @@ targetedSWGridSearch <- function(protein.traces.sw,
                                  window.sizes=c(5, 10, 15, 30),
                                  n.cores=detectCores()) {
     grid.size <- length(corr.cutoffs) * length(window.sizes)
-    lapply(seq_along(corr.cutoffs), function(corr.cutoff) {
+    res <- lapply(seq_along(corr.cutoffs), function(i) {
         corr.cutoff <- corr.cutoffs[i]
         lapply(seq_along(window.sizes), function(j) {
             window.size <- window.sizes[j]
@@ -289,4 +296,31 @@ targetedSWGridSearch <- function(protein.traces.sw,
                        n.cores=n.cores)
         })
     })
+    class(res) <- 'targetedSWGridSearchResult'
+    res
+}
+
+#' Merge the 2-way nested list produced by targetedSWGridSearch to produce
+#' a single data.table holding all subgroup observations. 
+#' @export
+mergeTargetedSWGridSearch <- function(targeted.sw.gs.results) {
+    gs.res.long <- do.call(rbind, lapply(targeted.sw.gs.results,
+                                         function(runs.over.window) {
+        do.call(rbind, lapply(runs.over.window, function(targeted.sw.result) {
+            input.complexes <- targeted.sw.result$input_complexes
+            do.call(rbind, lapply(seq_along(targeted.sw.result$sw_results), function(i) {
+                res <- targeted.sw.result$sw_results[[i]]
+                if (!is.na(res) && !is.null(res) && class(res) != 'try-error') {
+                    groups.by.sec <- res$subgroups.dt
+                    groups.by.sec$complex_id <- input.complexes[i]
+                    groups.by.sec$corr_cutoff <- res$corr.cutoff
+                    groups.by.sec$window_size <- res$window.size
+                    groups.by.sec
+                } else {
+                    NULL
+                }
+            }))
+        }))
+    }))
+    gs.res.long
 }
