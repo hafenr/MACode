@@ -15,6 +15,9 @@ produceProteinTraces <- function(peptide.traces) {
     protein.traces
 }
 
+#' Annotate protein traces with the complex id and complex name to which they
+#' might belong.
+#'
 #' @param protein.traces A long list data.table of protein traces that has the
 #'        columns \itemize{
 #'          \item protein_id : character
@@ -76,8 +79,10 @@ longProtTracesToWide <- function(dt) {
 #' Convert a wide format protein trace data.table to long format.
 #' @export
 wideProtTracesToLong <- function(dt) {
+    id.vars <- intersect(colnames(dt), c('protein_id', 'complex_id', 'complex_name'))
+    print(id.vars)
     dt.long <- melt(dt,
-         id.var=c('protein_id', 'complex_id', 'complex_name'),
+         id.var=id.vars,
          variable.name='sec',
          value.name='intensity',
          variable.factor=FALSE)

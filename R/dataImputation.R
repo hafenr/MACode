@@ -1,6 +1,7 @@
 #' Impute concentrations for proteins based on their total intensity across the
 #' SEC dimension and a list of proteins for which both SEC intensity
 #' information and concentration estimates exist.
+#' 
 #' Furthermore, missing protein molecular weights are also added.
 #'
 #' @param peptide.traces A long list format data.table of peptide traces.
@@ -46,11 +47,12 @@ imputeProteinConcentrations <- function(peptide.traces, protein.conc.estimates,
     p <- smooth.spline(log(merged$total_intensity),
                        log(merged$protein_concentration))
     fitted.vals <- predict(p, log(merged$total_intensity))
-    points(fitted.vals$x, fitted.vals$y, col='blue')
-    with(prots.imputed, points(log(total_intensity), log(protein_concentration),
-                               col='green', pch=4))
+    # points(fitted.vals$x, fitted.vals$y, col='blue')
+    # with(prots.imputed, points(log(total_intensity), log(protein_concentration),
+    #                            col='green', pch=4))
 
     abline(fit, col='red', lwd=3)
+    print(summary(fit))
 
     # For each of the proteins with an estimated conc. there is also an entry indicating
     # the proteins molecular weight. So for the proteins with imputed concentrations, we also

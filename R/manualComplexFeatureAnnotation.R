@@ -140,7 +140,9 @@ assessComplexFeaturesWithSEC <- function(true.positive.features,
 
 #' Annotate complex features using the manually annotated CORUM
 #' complexes.
+#'
 #' Each row will get an additional column `is_true_positive`.
+#'
 #' @param detected.features A data.table holding the features as output
 #' by cprophet PC.
 #' @param manual.annotations A data.table with the columns 'complex_id', 'rt'.
@@ -419,6 +421,8 @@ calcFPR <- function(dt) {
 }
 
 
+#' Make ROC curves and treat every SEC position as a possible feature.
+#'
 #' @param detected.features A dataframe with the columns: 'complex_id', 'rt'
 #' @param true.positive.features A dataframe with the columns: 'complex_id', 'rt'
 #' @param cutoffs A numeric vector of apex_mw_fit values that should be used to
@@ -460,6 +464,8 @@ makeROCWithSEC <- function(detected.features,
 }
 
 
+#' Make a ROC curve.
+#'
 #' @param detected.features A dataframe with the columns: 'complex_id', 'rt'
 #' @param true.positive.features A dataframe with the columns: 'complex_id', 'rt'
 #' @param params A numeric vector of apex_mw_fit values that should be used to

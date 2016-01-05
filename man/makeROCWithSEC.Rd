@@ -2,6 +2,7 @@
 % Please edit documentation in R/manualComplexFeatureAnnotation.R
 \name{makeROCWithSEC}
 \alias{makeROCWithSEC}
+\title{Make ROC curves and treat every SEC position as a possible feature.}
 \usage{
 makeROCWithSEC(detected.features, true.positive.features, cutoffs,
   feature.vicinity.tol = 5)
@@ -17,5 +18,8 @@ define if a feature passes the molecular weight test or not}
 \item{feature.vicinity.tol}{A numeric value that specifies how near an
 experimental feature has to be to a manually
 annotated one to count as a true positive}
+}
+\description{
+Make ROC curves and treat every SEC position as a possible feature.
 }
 

@@ -3,7 +3,8 @@
 
 #' Remove consecutive stretches from a matrix of peptide traces.
 #'
-#' @param x A single integer.
+#' @param mat Trace matrix.
+#' @param cutoff Stretch cutoff.
 #' @export
 removeStretchesFilter <- function(mat, cutoff) {
     .Call('MACode_removeStretchesFilter', PACKAGE = 'MACode', mat, cutoff)

@@ -5,7 +5,7 @@
 \title{Fit a nls model using multiple Gaussian functions.}
 \usage{
 nlsGaussianSum(y, x = seq_along(y), n = 1, spar = 0.5,
-  with.plot = FALSE)
+  with.plot = FALSE, quiet = TRUE)
 }
 \arguments{
 \item{y}{A numeric vector of intensity/signal values.}

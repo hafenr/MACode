@@ -10,7 +10,7 @@ requireAtLeastXPeptides(peps, min.peptides)
 \arguments{
 \item{peps}{A long format data.table of peptide intensities.
 The table should have the following columns:
-\itemize {
+\itemize{
   \item protein_id (character)
   \item peptide_id (character)
   \item sec (integer)

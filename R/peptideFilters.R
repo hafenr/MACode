@@ -3,7 +3,7 @@
 #'
 #' @param peps A long format data.table of peptide intensities.
 #'        The table should have the following columns:
-#'        \itemize {
+#'        \itemize{
 #'          \item protein_id (character)
 #'          \item peptide_id (character)
 #'          \item sec (integer)
@@ -21,7 +21,7 @@ requireAtLeastXPeptides <- function(peps, min.peptides) {
 #'
 #' @param peps A long format data.table of peptide intensities.
 #'        The table should have the following columns:
-#'        \itemize {
+#'        \itemize{
 #'          \item protein_id (character)
 #'          \item peptide_id (character)
 #'          \item sec (integer)

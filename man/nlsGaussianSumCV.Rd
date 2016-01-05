@@ -5,7 +5,8 @@
 \title{Choose the best number of gaussian components automatically using K-fold
 cross validation. The best performing model is refitted and returned.}
 \usage{
-nlsGaussianSumCV(y, x = seq_along(y), K = 3, n.range = 1:3, ...)
+nlsGaussianSumCV(y, x = seq_along(y), K = 3, n.range = 1:3,
+  quiet = TRUE, ...)
 }
 \arguments{
 \item{y}{The intensity values on which to fit.}

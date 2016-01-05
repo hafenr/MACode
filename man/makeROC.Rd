@@ -2,6 +2,7 @@
 % Please edit documentation in R/manualComplexFeatureAnnotation.R
 \name{makeROC}
 \alias{makeROC}
+\title{Make a ROC curve.}
 \usage{
 makeROC(detected.features, true.positive.features, params, n.all.complexes,
   subsetFeaturesFunc)
@@ -19,5 +20,8 @@ complex detection (this includes decoys).}
 
 \item{subsetFeaturesFunc}{A function that should receive a feature DT and a
 parameter value. It should return the same DT with some rows removed.}
+}
+\description{
+Make a ROC curve.
 }
 

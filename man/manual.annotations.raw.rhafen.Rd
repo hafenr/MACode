@@ -8,7 +8,7 @@ These annotations are based on the traces
 summed up protein traces from
 e4.peptide.traces.wide.filtered.
 A already processed and merged  version exists in the data frame
-\itemize {
+\itemize{
  \item manual.annotations.partial
  \item manual.annotations.full
  \item manual.annotations.full.complete
@@ -30,7 +30,7 @@ These annotations are based on the traces
 summed up protein traces from
 e4.peptide.traces.wide.filtered.
 A already processed and merged  version exists in the data frame
-\itemize {
+\itemize{
  \item manual.annotations.partial
  \item manual.annotations.full
  \item manual.annotations.full.complete

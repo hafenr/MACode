@@ -2,6 +2,8 @@
 % Please edit documentation in R/dataConversion.R
 \name{annotateProteinTraces}
 \alias{annotateProteinTraces}
+\title{Annotate protein traces with the complex id and complex name to which they
+might belong.}
 \usage{
 annotateProteinTraces(protein.traces, complex.assoc)
 }
@@ -20,6 +22,10 @@ columns \itemize{
   \item complex_name : character
   \item protein_id   : character
 }}
+}
+\description{
+Annotate protein traces with the complex id and complex name to which they
+might belong.
 }
 \examples{
 prottraces <- produceProteinTraces(peptraces)

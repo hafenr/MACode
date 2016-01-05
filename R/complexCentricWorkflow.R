@@ -7,19 +7,22 @@ convertToPCComplexFeatureFormat <- function(complex.features,
     complex.features[, complex_id := gsub('pep_', '', transition_group_id)]
 
     n_subunits <- sapply(strsplit(complex.features$aggr_Fragment_Annotation, ';'), length)
-
+    complex.features[
+         ,
+         n_subunits :=
+               length(strsplit(aggr_Fragment_Annotation, ';')),
+         by=complex_id
+    ]
     subunit.counts <- corum.complex.protein.assoc[, length(protein_id), by=complex_id]
     setnames(subunit.counts, 'V1', 'n_subunits_annotated')
-
     complex.features <- merge(complex.features, subunit.counts, by='complex_id', all.x=TRUE)
 
     data.table(complex_id=complex.features$complex_id,
                center_rt=complex.features$RT,
                left_boundary_rt=complex.features$leftWidth,
                right_boundary_rt=complex.features$rightWidth,
-               subunit_ids=gsub(';', ',',
-                                complex.features$aggr_Fragment_Annotation),
-               n_subunits=n_subunits,
+               subunit_ids=gsub(';', ',', complex.features$aggr_Fragment_Annotation),
+               n_subunits=complex.features$n_subunits,
                n_subunits_annotated=complex.features$n_subunits_annotated)
 }
 
@@ -35,7 +38,7 @@ createCCInputData <- function(peptide.traces.long,
     protein.traces.long <- produceProteinTraces(peptide.traces.long)
     protein.traces.with.complex <-
         merge(protein.traces.long, corum.complex.protein.assoc, by='protein_id',
-              allow.cartesian=true)
+              allow.cartesian=T)
 
     protein.traces.wide <- longProtTracesToWide(protein.traces.with.complex)
     protein.traces.wide <- protein.traces.wide[, complex_name := NULL]

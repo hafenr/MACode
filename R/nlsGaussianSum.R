@@ -71,11 +71,13 @@ makeStartParams <- function(n.components, max.x, max.y) {
 #' @return The fitted nls model.
 #'
 #' @export
-nlsGaussianSum <- function(y, x=seq_along(y), n=1, spar=0.5, with.plot=FALSE) {
+nlsGaussianSum <- function(y, x=seq_along(y), n=1, spar=0.5,
+nlsGaussianSum                           with.plot=FALSE, quiet=TRUE) {
     # Get the right fitting function from the environment dynamically
     sumg <- get(sprintf('sumg%d', n))
     if (with.plot)
-        plot(x, y, type='p', lwd=3, col='blue')
+        plot(x, y, type='p', lwd=3, col='blue',
+             main=sprintf('Gaussian sum fit (n = %d)', n))
     # Fit smoothing spline and get fitted values
     ss <- smooth.spline(x, y, spar=spar)
     ss.pred <- predict(ss, seq(min(x), max(x), by=0.01))
@@ -103,13 +105,14 @@ nlsGaussianSum <- function(y, x=seq_along(y), n=1, spar=0.5, with.plot=FALSE) {
         lines(x, y.fit.initial, col='gray')
 
     # Lower and uppwer bounds for the parameter (requires algorithm == 'port')
-    min.intensity.factor <- 0.1 * max(y)
+    min.intensity.factor <- 0.2 * max(y)
     min.sigma <- 3
     param.limits.lower <- rep(c(min.intensity.factor, min.sigma, 0), n)
     param.limits.upper <- rep(c(1.5 * max(y), 30, 80), n)
-    cat('Parameter limits:\nlower: ', param.limits.lower,
-        '\nupper: ',
-        param.limits.upper)
+    if (!quiet)
+        cat('Parameter limits:\nlower: ', param.limits.lower,
+            '\nupper: ',
+            param.limits.upper)
 
     # Fit the function
     fit <- nls(fit.call.formula,
@@ -124,12 +127,27 @@ nlsGaussianSum <- function(y, x=seq_along(y), n=1, spar=0.5, with.plot=FALSE) {
     if (with.plot)
         lines(x, fit$m$fitted(), col='red', lwd=2)
     pars <- fit$m$getAllPars()
-    cat('Final params: ', pars, '\n')
+    if (!quiet)
+        cat('Final params: ', pars, '\n')
     if (with.plot) {
         for (idx in seq(3, length(pars), 3)) {
             print(idx)
-            abline(v=pars[idx], lwd=3)
+            abline(v=pars[idx], lwd=3, col='red', lty=3)
         }
+    }
+
+    if (with.plot) {
+        legend('topleft', c('smoothed protein signal',
+                            'gaussian sum w/ starting parameters',
+                            'gaussian sum w/ optimized parameters',
+                            'gaussian component means (feature apex)'),
+               lty=c(1, 1, 1, 3), lwd=2,
+               col=c('green', 'gray', 'red', 'red'),
+               bg='white')
+        legend('topright', c('measured protein signal'),
+               pch=1, lwd=2,
+               col='blue',
+               bg='white')
     }
 
     gaussian.sum.fit <-
@@ -141,6 +159,8 @@ nlsGaussianSum <- function(y, x=seq_along(y), n=1, spar=0.5, with.plot=FALSE) {
     gaussian.sum.fit
 }
 
+#' Predict using a nlsGaussianSum model.
+#' @export
 predict.nlsGaussianSum <- function(fit, x) {
     do.call(fit$sumg, c(list(x), as.list(fit$params)))
 }
@@ -157,20 +177,21 @@ predict.nlsGaussianSum <- function(fit, x) {
 #'
 #' @export
 nlsGaussianSumCV <- function(y, x=seq_along(y), K=3, n.range=1:3,
-                             ...) {
+                             quiet=TRUE, ...) {
     res <- cvTuning(nlsGaussianSum, x=x, y=y,
                     tuning=list(n=n.range),
                     cost=function(obs, pred){
                         err = sqrt(mean((obs - pred)^2))
-                        cat('ERROR:\t', err, '\n')
+                        if (!quiet)
+                            cat('ERROR:\t', err, '\n')
                         err
                     },
-                    args=list(...),
+                    args=c(list(quiet=quiet), list(...)),
                     K=K)
     # Refit the model using the number of components that led to the
     # smallest error as estimated by CV.
     best.n <- res$best
-    nlsGaussianSum(y=y, x=x, n=best.n, ...)
+    nlsGaussianSum(y=y, x=x, n=best.n, quiet=quiet, ...)
 }
 
 
@@ -214,14 +235,45 @@ nlsGaussianSumCV2 <- function(y, x=seq_along(y), K=3, n.range=1:3, ...) {
 }
 
 
+#' Deconvolute a wide format data.table of protein traces using Gaussian
+#' deconvolution.
+#'
+#' @export
+#' @examples
+#' res <- deconvProteinTraces(protein.traces.2peps, n.cores=32)
+deconvProteinTraces <- function(protein.traces, n.cores=2, K=3, n.range=1:4) {
+    require(cvTools)
+    registerDoMC(cores=n.cores)
+    pfeatures = foreach(i=1:nrow(protein.traces)) %dopar% {
+        cat(sprintf('Current iteration: %d / %d', i, nrow(protein.traces)), '\n')
+        # Convert row of DT to vector
+        ptrace = as.matrix(
+            subset(protein.traces[i, ],
+            select=-c(protein_id, complex_id))
+        )[1, ]
+        res = nlsGaussianSumCV(ptrace, K=K, n.range=n.range, with.plot=T)
+        res
+    }
+    pfeatures
+}
+
 # Example:
-# res = nlsGaussianSumCV(y, K=3, n.range=1:3, with.plot=T)
+# res = nlsGaussianSumCV(y, K=3, n.range=1:5, with.plot=T)
+# res = nlsGaussianSum(y, n=10, with.plot=T)
 
 # peptraces <- widePepTracesToLong(e4.peptide.traces.wide.filtered)
 # prottraces.l <- produceProteinTraces(peptraces)
 # prottraces.wc <- annotateProteinTraces(prottraces.l, corum.complex.protein.assoc)
 # prottraces <- longProtTracesToWide(prottraces.wc)
 # prottraces
+
+# y = as.matrix(subset(longProtTracesToWide(prottraces[protein_id ==
+#                                           "P49720"]),
+#                      select=-protein_id))[1, ]
+# res = nlsGaussianSumCV(y, K=2, n.range=1:3, with.plot=T)
+# res = nlsGaussianSum(y, n=3, with.plot=T)
+
+# removeStretchesFilter(e4.peptide.traces.fil[protein_id == "O00267"], 4)
 
 # prot <- 'P06576'
 # setkey(prottraces)
@@ -232,3 +284,5 @@ nlsGaussianSumCV2 <- function(y, x=seq_along(y), K=3, n.range=1:3, ...) {
 # plot(trace, type='o')
 
 # res = nlsGaussianSumCV(trace, with.plot=T, K=3, n.range=1:4)
+
+

@@ -15,6 +15,22 @@ pearsonCorrScore <- function(trace.mat) {
     mean(correls)
 }
 
+detectGroupsWithinWindow <- function(tracemat, protein.names, corr.cutoff) {
+    corrmat <- cor(t(tracemat))
+    # Compute distance between elements as measured by the pearson correlation,
+    # i.e., dist = 2 - abs(pearson corr)
+    distance <- proxy::dist(corrmat, method='correlation')
+    # Cluster correlation vectors hierarchically s.t. proteins that correlate
+    # well with a similar group of other proteins cluster together.
+    cl <- hclust(distance)
+    plot(cl)
+    abline(h=1 - corr.cutoff, col='red')
+    # Cut the dendrogram at distance 0.3, i.e. pearson corr == 0.7,
+    # this will give a vector of group labels.
+    group.assignments <- cutree(cl, h=1 - corr.cutoff)
+    group.assignments
+}
+
 #' Compute the correlation between rows in a matrix considering only a window.
 #' This is a helper method.
 #'
@@ -78,3 +94,19 @@ slidingWindowCorrelation <- function(trace.mat, window.size, score='pearson') {
     }
     all.correls
 }
+
+# protein.traces <-
+#     fread('~/Dev/cprophet/data/e4_peptides_mscore_lt_1percent_no_requant_no_decoy_wide_CC.tsv')
+# setnames(protein.traces, 'protein_id', 'complex_id')
+# setnames(protein.traces, 'peptide_id', 'protein_id')
+
+# protein.traces.subs <- protein.traces[complex_id == 192]
+# protein.traces.subs.long <- wideProtTracesToLong(protein.traces.subs)
+# plotTraces(protein.traces.subs.long,
+#            'protein_id',
+#            'complex_id', '')
+
+# samplemat <- as.matrix(subset(protein.traces.subs, select=-c(protein_id, complex_id)))
+# detectGroupsWithinWindow(samplemat,
+#                          unique(protein.traces.subs.long$protein_id),
+#                          0.7)

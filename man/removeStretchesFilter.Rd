@@ -7,7 +7,9 @@
 removeStretchesFilter(mat, cutoff)
 }
 \arguments{
-\item{x}{A single integer.}
+\item{mat}{Trace matrix.}
+
+\item{cutoff}{Stretch cutoff.}
 }
 \description{
 Remove consecutive stretches from a matrix of peptide traces.

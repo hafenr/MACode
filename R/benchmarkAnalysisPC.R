@@ -1,15 +1,12 @@
 require(stringr)
 require(hash)
 
-#' If the stats are calculated for the CC wf, then input.complexes has to be
-#' specified.
+#' Calculate stats for the PC workflow.
 #' @export
-calculateDetectionStats <- function(gs.run.directory, manual.annotations,
-                                    sec.range=3:83,
-                                    with.SEC=FALSE,
-                                    complex.centric=FALSE,
-                                    input.complexes=NULL,
-                                    window.range=c(2, 4, 8, 12, 18)) {
+calculateDetectionStatsPC <- function(gs.run.directory, manual.annotations,
+                                      sec.range=3:83,
+                                      # with.SEC=FALSE,
+                                      window.range=c(2, 4, 8, 12, 18)) {
     files <- list.files(gs.run.directory)
     iter.dirs <- files[grepl('iteration-', files)]
     iter.params.map <- vector('list', length(iter.dirs))
@@ -29,25 +26,11 @@ calculateDetectionStats <- function(gs.run.directory, manual.annotations,
         iter.num <- iter.nums[i]
         iter.params.map[[as.character(iter.num)]] <- fread(file.path(gs.run.directory, d, 'params.csv'))
 
-        if (complex.centric) {
-            if (is.null(input.complexes)) {
-                stop(paste('For the CC wf you need to give',
-                           'the input complexes, i.e. a vector of complex ids',
-                           'that were fed into the pipeline.'))
-            }
-            input.complexes <- unique(input.complexes)
-            detected.complex.features <-
-                fread(file.path(gs.run.directory, d, 'sec_proteins_with_dscore.csv'))
-            detected.complex.features <- 
-                convertToPCComplexFeatureFormat(detected.complex.features,
-                                                corum.complex.protein.assoc)
-        } else {
-            input.complexes.and.proteins <-
-                fread(file.path(gs.run.directory, d, 'input_complexes.tsv'))
-            input.complexes <- unique(input.complexes.and.proteins$complex_id)
-            detected.complex.features <-
-                fread(file.path(gs.run.directory, d, 'sec_complexes.tsv'))
-        }
+        input.complexes.and.proteins <-
+            fread(file.path(gs.run.directory, d, 'input_complexes.tsv'))
+        input.complexes <- unique(input.complexes.and.proteins$complex_id)
+        detected.complex.features <-
+            fread(file.path(gs.run.directory, d, 'sec_complexes.tsv'))
 
         # Only complexes with >= 2 subunits should be considered 'true'
         detected.complex.features <- detected.complex.features[n_subunits >= 2, ]
@@ -57,49 +40,47 @@ calculateDetectionStats <- function(gs.run.directory, manual.annotations,
         detected.complex.features <- 
             detected.complex.features[(n_subunits / n_subunits_annotated) >= 0.5, ]
         
-        if (with.SEC) {
-            annotation.result <-
-                annotateComplexFeatures(detected.complex.features, manual.annotations)
-            detected.complex.features <- annotation.result$annotated.features
+        # if (with.SEC) {
+        #     annotation.result <-
+        #         annotateComplexFeatures(detected.complex.features, manual.annotations)
+        #     detected.complex.features <- annotation.result$annotated.features
 
-            false.negatives <- annotation.result$false.negatives
+        #     false.negatives <- annotation.result$false.negatives
 
-            # The complexes that wen't into the analysis
-            theoretically.possible.complexes <- unique(input.complexes$complex_id)
+        #     # The complexes that wen't into the analysis
+        #     theoretically.possible.complexes <- unique(input.complexes$complex_id)
 
-            TP <- sum(detected.complex.features$is_true_positive)
-            FP <- nrow(detected.complex.features) - TP
-            FN <- nrow(false.negatives)
-            n.all.possible.features <-
-                length(sec.range) * length(theoretically.possible.complexes)
-            TN <- n.all.possible.features - TP - FP - FN
+        #     TP <- sum(detected.complex.features$is_true_positive)
+        #     FP <- nrow(detected.complex.features) - TP
+        #     FN <- nrow(false.negatives)
+        #     n.all.possible.features <-
+        #         length(sec.range) * length(theoretically.possible.complexes)
+        #     TN <- n.all.possible.features - TP - FP - FN
 
-            TPR[i] <- TP / (TP + FN)
-            FPR[i] <- FP / (TN + FP)
-        } else {
-            true.complexes <- unique(manual.annotations$complex_id)
-            detected.complexes <- unique(detected.complex.features$complex_id)
+        #     TPR[i] <- TP / (TP + FN)
+        #     FPR[i] <- FP / (TN + FP)
+        # } else {
+        true.complexes <- unique(manual.annotations$complex_id)
+        detected.complexes <- unique(detected.complex.features$complex_id)
 
-            TP <- sum(detected.complexes %in% true.complexes)
-            FN <- length(true.complexes) - TP
+        TP <- sum(detected.complexes %in% true.complexes)
+        FN <- length(true.complexes) - TP
 
-            FP <- sum(!(detected.complexes %in% true.complexes))
-            negative.complexes <- # == false targets and decoys
-                input.complexes[!(input.complexes %in% true.complexes)]
-            TN <- sum(!(negative.complexes %in% detected.complexes))
+        FP <- sum(!(detected.complexes %in% true.complexes))
+        negative.complexes <- # == false targets and decoys
+            input.complexes[!(input.complexes %in% true.complexes)]
+        TN <- sum(!(negative.complexes %in% detected.complexes))
 
-            TPR[i] <- TP / (TP + FN)
-            FPR[i] <- FP / (TN + FP)
-        }
+        TPR[i] <- TP / (TP + FN)
+        FPR[i] <- FP / (TN + FP)
+        # }
 
         # Compute the site localization rate
         site.localization.rate[i, ] <- sapply(window.range, function(w) {
             computeSiteLocalizationRate(detected.complex.features,
-                                        manual.annotations.full.complete,
+                                        manual.annotations,
                                         w)
         })
-
-
     }
     roc.stats <- data.table(iternum=iter.nums, FPR=FPR, TPR=TPR)
 
@@ -137,48 +118,59 @@ computeSiteLocalizationRate <- function(detected.features,
 
         sum(has.close.enough.manual.rt)
     })
+    n.close.enough.rts.sum <- if (length(n.close.enough.rts) != 0) {
+        sum(n.close.enough.rts)
+    } else {
+        0
+    }
     
-    rate <- sum(n.close.enough.rts) / nrow(detected.features)
+    rate <- n.close.enough.rts.sum / nrow(detected.features)
     rate
 }
 
 
 #' Plot the pseudo ROC curve for the output of `calculateDetectionStats`.
 #' @export
-plotROC <- function(stats) {
+plotROC <- function(stats, complex.centric=FALSE, title=NULL) {
     roc.stats <- stats$roc.stats
-    site.localization.rate <- stats$site.localization.rate
-    run.with.highest.avg <- which.max(apply(site.localization.rate, 1, mean))
-    distances.to.topleft <- apply(subset(roc.stats, select=-iternum), 1, function(fpr.tpr) {
+    distances.to.topleft <- apply(subset(roc.stats, select=c(FPR, TPR)), 1, function(fpr.tpr) {
         sqrt(sum((c(0, 1) - fpr.tpr)^2))
     })
     best.iter <- which.min(distances.to.topleft)
 
+    if (is.null(title)) {
+        title <- paste0(sprintf('Grid search results - %s-centric workflow',
+                               if (complex.centric) 'complex' else 'protein'))
+    }
     p <- ggplot(roc.stats) +
         geom_abline(slope=1) +
         geom_point(aes(x=FPR, y=TPR), alpha=0.5) +
         geom_point(aes(x=FPR, y=TPR), data=roc.stats[best.iter, ], color='red') +
-        geom_segment(aes(xend=FPR, yend=TPR), x=0, y=1, alpha=0.01) +
+        # geom_segment(aes(xend=FPR, yend=TPR), x=0, y=1, alpha=0.01) +
         geom_segment(aes(xend=FPR, yend=TPR), x=0, y=1, color='red',
                      linetype=2,
                      data=roc.stats[best.iter, ]) +
         xlim(0, 1) +
         ylim(0, 1) +
-        geom_vline(xintercept=0.1, linetype=3) +
-        labs(title='Grid search results - protein-centric workflow',
+        # geom_vline(xintercept=0.1, linetype=3) +
+        labs(title=title,
              x='false positive rate',
              y='true positive rate')
     print(p)
+    p
 }
 
 #' Plot the site localization rate for the output of `calculateDetectionStats`.
 #' @export
 plotSiteLocalizationRate <- function(stats, index) {
-    ggplot(data.frame(localization.rate=stats$site.localization.rate[index, ],
+    p <- ggplot(data.frame(localization.rate=stats$site.localization.rate[index, ],
                       window.size=c(2, 4, 8, 12, 18))) +
-        geom_bar(aes(x=window.size, y=localization.rate), stat="identity") +
-        labs(title='Site localization rate',
-             x='window size',
-             y='ratio of features within window ')
+        geom_point(aes(x=window.size, y=localization.rate)) +
+        geom_line(aes(x=window.size, y=localization.rate)) +
+        labs(x='window size',
+             y='ratio of features within window ') +
+        ylim(c(0, 1))
+    print(p)
+    p
 }
 

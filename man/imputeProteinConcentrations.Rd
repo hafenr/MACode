@@ -4,8 +4,7 @@
 \alias{imputeProteinConcentrations}
 \title{Impute concentrations for proteins based on their total intensity across the
 SEC dimension and a list of proteins for which both SEC intensity
-information and concentration estimates exist.
-Furthermore, missing protein molecular weights are also added.}
+information and concentration estimates exist.}
 \usage{
 imputeProteinConcentrations(peptide.traces, protein.conc.estimates,
   protein.ids.file)
@@ -29,9 +28,6 @@ A data.table holding all proteins with their molecular weight and
         concentration.
 }
 \description{
-Impute concentrations for proteins based on their total intensity across the
-SEC dimension and a list of proteins for which both SEC intensity
-information and concentration estimates exist.
 Furthermore, missing protein molecular weights are also added.
 }
 \examples{

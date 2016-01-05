@@ -2,8 +2,10 @@
 % Please edit documentation in R/dataVisualization.R
 \name{plotTraces}
 \alias{plotTraces}
+\title{Plot traces for a single complex or protein.}
 \usage{
-plotTraces(traces.dt, subunit.id.col, parent.id.col, title = "")
+plotTraces(traces.dt, subunit.id.col, parent.id.col, title = "", plot = T,
+  log = F)
 }
 \arguments{
 \item{traces.dt}{A long list style data.table holding the traces.}
@@ -16,6 +18,9 @@ plotTraces(traces.dt, subunit.id.col, parent.id.col, title = "")
 }
 \value{
 The ggplot plot object
+}
+\description{
+Plot traces for a single complex or protein.
 }
 \examples{
 peptraces <- widePepTracesToLong(e4.peptide.traces.wide.filtered)

@@ -5,7 +5,7 @@
 \alias{e4.peptide.traces.wide.filtered}
 \title{A wide format data.table of peptide trace intensities.}
 \format{A data.table with 28925 rows and the following columns:
-\itemize {
+\itemize{
  \item protein_id: the id of the protein to which this peptide might belong
  \item peptide_id: the id of the peptide itself
  \item 3: intensity measurements for sec fraction 3
@@ -18,7 +18,7 @@ e4.peptide.traces.wide.filtered
 }
 \description{
 The settings applied to the raw data are:
-\itemize {
+\itemize{
  \item m_score < 0.01
  \item no requant values
  \item no decoy values
@@ -26,7 +26,7 @@ The settings applied to the raw data are:
 }
 \details{
 Further filters were applied:
-\itemize {
+\itemize{
  \item require_at_least_x_peptides(df, 2)
  \item remove_low_correlating_peptides(df)
  \item retain_x_most_intense_peptides(df, 10)

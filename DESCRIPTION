@@ -12,6 +12,9 @@ Imports: Rcpp (>= 0.12.1),
     data.table,
     ggplot2,
     cvTools,
-    hash
+    hash,
+    proxy,
+    foreach,
+    doMC
 LinkingTo: Rcpp
 LazyData: true

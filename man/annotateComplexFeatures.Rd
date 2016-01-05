@@ -3,8 +3,7 @@
 \name{annotateComplexFeatures}
 \alias{annotateComplexFeatures}
 \title{Annotate complex features using the manually annotated CORUM
-complexes.
-Each row will get an additional column `is_true_positive`.}
+complexes.}
 \usage{
 annotateComplexFeatures(detected.features, manual.annotations,
   with.sec = TRUE, feature.vicinity.tol = 5)
@@ -25,8 +24,6 @@ annotated one to count as a true positive}
 The same data.table with a new column 'is_true_positive'.
 }
 \description{
-Annotate complex features using the manually annotated CORUM
-complexes.
 Each row will get an additional column `is_true_positive`.
 }
 
