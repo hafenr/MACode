@@ -168,3 +168,125 @@ plot.swResult <- function(sw.result, protein.traces.long, n.largest=NULL,
     print(p)
     p
 }
+
+#' Run the sliding window algorithm over a wide format data.table of protein
+#' traces.
+#' @export
+targetedSW <- function(protein.traces.sw, corr.cutoff=0.99, window.size=15,
+                       n.cores=detectCores()) {
+
+    setkey(protein.traces.sw, complex_id)
+
+    # Generate decoys
+    protein.traces.sw.decoy <- data.table::copy(protein.traces.sw)
+    protein.traces.sw.decoy[, complex_id := sample(complex_id)]
+    protein.traces.sw.decoy[, complex_id := paste0('DECOY_', complex_id)]
+    protein.traces.sw.decoy[, is_decoy := TRUE]
+    protein.traces.sw[, is_decoy := FALSE]
+
+    ## Concatenate target and decoy complexes
+    protein.traces.sw.all <- rbind(protein.traces.sw.decoy, protein.traces.sw)
+    # Throw out all complexes with less than 2 traces
+    protein.traces.sw.all[, n_subunits_observed := length(protein_id), by='complex_id']
+    protein.traces.sw.all <- protein.traces.sw.all[n_subunits_observed >= 2]
+    protein.traces.sw.all[, n_subunits_observed := NULL]
+
+    ## All complexes used for input
+    input.complexes.sw <- unique(protein.traces.sw.all$complex_id)
+
+    registerDoMC(n.cores)
+
+    is.complex.validated <- logical(length(input.complexes.sw))
+
+    sw.results <- foreach(i=seq_along(input.complexes.sw)) %dopar% {
+        complex.id <- input.complexes.sw[i]
+        cat('********************************************************************************\n')
+        cat(sprintf('CHECKING RUN:  %d / %d', i, length(input.complexes.sw)), '\n')
+        cat('********************************************************************************\n')
+
+        # Extract the protein traces belonging to the current complex
+        traces.subs <- protein.traces.sw.all[complex_id == complex.id]
+        is.decoy.complex <- traces.subs$is_decoy[1]
+        protein.names <- traces.subs$protein_id
+        # Convert traces to a matrix
+        traces.mat <- as.matrix(subset(traces.subs, select=-c(complex_id, protein_id, is_decoy)))
+
+        # Run the algorithm
+        res.sw <- detectSubgroupsSW(traces.mat, protein.names, 0.9, window.size=15)
+
+        # Get the size of the complex as annotated in CORUM
+        if (!is.decoy.complex) {
+            annotated.complex.size <-
+                corum.complex.protein.assoc[complex_id == complex.id, n_subunits_annotated][1]
+        } else {
+            annotated.complex.size <- nrow(traces.mat)
+        }
+
+        if (nrow(res.sw$subgroups.dt) > 0) {
+            if (any(res.sw$subgroups.dt$n_subunits >= 0.5 * annotated.complex.size)) {
+                is.complex.validated[i] <- TRUE
+            } else {
+                is.complex.validated[i] <- FALSE
+            }
+        } else {
+            is.complex.validated[i] <- FALSE
+        }
+
+        cat('Complex', complex.id, 'was found to be', is.complex.validated[i], '\n')
+        cat('Is manually annotated? ==>', complex.id %in% manual.annotations.final$complex_id, '\n')
+        if (is.decoy.complex) {
+            cat('==> DECOY\n')
+        }
+    }
+
+    res <- list(sw_results=sw.results,
+         input_complexes=input.complexes.sw,
+         is.complex.validated=is.complex.validated,
+         corr.cutoff=corr.cutoff,
+         window.size=window.size)
+
+    class(res) <- 'targetedSWResult'
+
+    res
+
+#     plotTraces(wideProtTracesToLong(subset(protein.traces.sw.decoy, select=-is_decoy))[complex_id == 'DECOY_10'], 'protein_id', 'complex_id')
+
+
+#     true.complexes <- unique(manual.annotations.final$complex_id)
+#     detected.complexes <- input.complexes.sw[is.complex.validated]
+
+#     TP <- sum(detected.complexes %in% true.complexes)
+#     FN <- length(true.complexes) - TP
+
+#     FP <- sum(!(detected.complexes %in% true.complexes))
+#     negative.complexes <- # == false targets and decoys
+#         input.complexes.sw[!(input.complexes %in% true.complexes)]
+#     TN <- sum(!(negative.complexes %in% detected.complexes))
+
+#     TPR <- TP / (TP + FN)
+#     FPR <- FP / (TN + FP)
+}
+
+
+#' Perform the targeted sliding window detection over a grid of parameters
+#' @export
+targetedSWGridSearch <- function(protein.traces.sw,
+                                 corr.cutoffs=c(0.1, 0.5, 0.9, 0.99),
+                                 window.sizes=c(5, 10, 15, 30),
+                                 n.cores=detectCores()) {
+    grid.size <- length(corr.cutoffs) * length(window.sizes)
+    lapply(seq_along(corr.cutoffs), function(corr.cutoff) {
+        corr.cutoff <- corr.cutoffs[i]
+        lapply(seq_along(window.sizes), function(j) {
+            window.size <- window.sizes[j]
+            cat(paste(rep('+', 80), collapse=''), '\n\n')
+            cat(sprintf('GRID SEARCH ITERATION: %d / %d\n',
+                        (i-1) * length(corr.cutoffs) + j,
+                        grid.size))
+            cat(paste0(rep('+', 80), collapse=''), '\n\n')
+            targetedSW(protein.traces.sw, corr.cutoff=corr.cutoff,
+                       window.size=window.size,
+                       n.cores=n.cores)
+        })
+    })
+}
