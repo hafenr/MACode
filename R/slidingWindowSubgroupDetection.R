@@ -4,7 +4,9 @@
 #' @return A vector of the same length as the number of proteins. Each element
 #'         corresponds to a integer-based cluster label.
 #' @export
-detectGroupsWithinWindow <- function(tracemat, corr.cutoff, with.plot=F) {
+detectGroupsWithinWindow <- function(tracemat, corr.cutoff, with.plot=F,
+                                     sec=NULL) {
+
     if (nrow(tracemat) == 2) {
         corr <- proxy::simil(tracemat, method='correlation')[1]
         if (corr > corr.cutoff) {
@@ -17,7 +19,8 @@ detectGroupsWithinWindow <- function(tracemat, corr.cutoff, with.plot=F) {
     corrmat <- cor(t(tracemat))
     # Compute distance between elements as measured by the pearson correlation,
     # i.e., dist = 2 - abs(pearson corr)
-    distance <- proxy::dist(corrmat, method='correlation')
+    distance <- proxy::dist(tracemat, method='correlation')
+    # distance <- proxy::dist(corrmat, method='Euclidean')
     # Cluster correlation vectors hierarchically s.t. proteins that correlate
     # well with a similar group of other proteins cluster together.
     cl <- hclust(distance)
@@ -28,6 +31,13 @@ detectGroupsWithinWindow <- function(tracemat, corr.cutoff, with.plot=F) {
     # Cut the dendrogram at distance 0.3, i.e. pearson corr == 0.7,
     # this will give a vector of group labels.
     group.assignments <- cutree(cl, h=1 - corr.cutoff)
+    # if () {
+    #     browser()
+    # }
+    group.found <- length(unique(group.assignments)) < length(group.assignments)
+    if (sec >= 70 && group.found) {
+        browser()
+    }
     group.assignments
 }
 
@@ -47,10 +57,17 @@ detectSubgroupsSW <- function(trace.mat,
                               protein.names,
                               corr.cutoff=0.75,
                               window.size=15,
-                              with.plot=F) {
+                              with.plot=F,
+                              noise.quantile=0.1) {
     if (nrow(trace.mat) < 2) {
         stop('Trace matrix needs at least 2 proteins')
     }
+    measure.vals <- trace.mat[trace.mat != 0]
+    n.zero.entries <- sum(trace.mat == 0)
+    noise.mean <- quantile(measure.vals, noise.quantile)
+    noise.sd <- sd(measure.vals[measure.vals < noise.mean])
+    trace.mat[trace.mat == 0] <- abs(rnorm(n.zero.entries, mean=noise.mean,
+                                     sd=noise.sd))
 
     end.idx <- ncol(trace.mat) - window.size
 
@@ -61,16 +78,17 @@ detectSubgroupsSW <- function(trace.mat,
         ### Impute matrix
         # Rows with only 0 will lead to uncomputable standard deviations when
         # computing the correlation. Those rows are imputed with Norm(0, 1) noise.
-        is.all.zero.row <- rowSums(window.trace.mat) == 0
-        if (any(is.all.zero.row)) {
-            effective.window.size <- end.window.idx - start.window.idx + 1
-            n.zero.entries <- effective.window.size * sum(is.all.zero.row)
-            window.trace.mat[is.all.zero.row, ] <- rnorm(n.zero.entries)
-        }
+        # is.all.zero.row <- rowSums(window.trace.mat) == 0
+        # if (any(is.all.zero.row)) {
+        #     effective.window.size <- end.window.idx - start.window.idx + 1
+        #     n.zero.entries <- effective.window.size * sum(is.all.zero.row)
+        #     window.trace.mat[is.all.zero.row, ] <- rnorm(n.zero.entries)
+        # }
 
         groups.within.window <-
             detectGroupsWithinWindow(window.trace.mat, corr.cutoff=corr.cutoff,
-                                     with.plot=with.plot)
+                                     with.plot=with.plot,
+                                     sec=start.window.idx)
 
         groups.within.window
     })
@@ -120,9 +138,11 @@ detectSubgroupsSW <- function(trace.mat,
     })
     groups.dt <- do.call(rbind, groups.dt.list)
 
+    rownames(trace.mat) <- protein.names
     result <- list(subgroups.dt=groups.dt,
                    window.size=window.size,
-                   corr.cutoff=corr.cutoff)
+                   corr.cutoff=corr.cutoff,
+                   trace.mat=trace.mat)
     class(result) <- 'swResult'
     result
 }
@@ -145,11 +165,12 @@ plot.swResult <- function(sw.result, protein.traces.long, n.largest=NULL,
         subgroups.dt <- subgroups.dt[n_subunits %in% largest.n]
     }
 
-    merged.data <- merge(subgroups.dt, protein.traces.long,
-                         by=c('protein_id', 'sec'))
-    subgroup.plot <- ggplot(merged.data) +
+    # merged.data <- merge(subgroups.dt, protein.traces.long,
+    #                      by=c('protein_id', 'sec'))
+    subgroup.plot <- ggplot(subgroups.dt) +
         geom_point(aes(x=sec, y=protein_id, color=protein_id),
-                  size=3, shape=15) +
+                  size=2, shape=15) +
+        xlim(c(min(protein.traces.long$sec), max(protein.traces.long$sec))) +
         # geom_area(aes(x=sec, y=2, fill=protein_id), size=2, position='stack') +
         facet_wrap(~ subgroup, nrow=length(unique(subgroups.dt$subgroup))) +
         ggtitle(sprintf('Detected subgroups (window size = %d, correlation cutoff = %f)',
@@ -196,7 +217,6 @@ targetedSW <- function(protein.traces.sw, corr.cutoff=0.99, window.size=15,
 
     registerDoMC(n.cores)
 
-    # is.complex.validated <- logical(length(input.complexes.sw))
 
     sw.results <- foreach(i=seq_along(input.complexes.sw)) %dopar% {
         complex.id <- input.complexes.sw[i]
@@ -217,61 +237,18 @@ targetedSW <- function(protein.traces.sw, corr.cutoff=0.99, window.size=15,
                               corr.cutoff=corr.cutoff,
                               window.size=window.size)
         })
-
-        # Get the size of the complex as annotated in CORUM
-        # if (!is.decoy.complex) {
-        #     if (complex.id %in% corum.complex.protein.assoc$complex_id) {
-        #         annotated.complex.size <-
-        #             corum.complex.protein.assoc[complex_id == complex.id, n_subunits_annotated][1]
-        #     } else {
-        #         annotated.complex.size <- length(protein.names)
-        #     }
-        # } else {
-        #     annotated.complex.size <- nrow(traces.mat)
-        # }
-
-        # if (nrow(res.sw$subgroups.dt) > 0) {
-        #     if (any(res.sw$subgroups.dt$n_subunits >= 0.5 * annotated.complex.size)) {
-        #         is.complex.validated[i] <- TRUE
-        #     } else {
-        #         is.complex.validated[i] <- FALSE
-        #     }
-        # } else {
-        #     is.complex.validated[i] <- FALSE
-        # }
-
-        # cat('Complex', complex.id, 'was found to be', is.complex.validated[i], '\n')
-        # cat('Is manually annotated? ==>', complex.id %in% manual.annotations.final$complex_id, '\n')
-        # if (is.decoy.complex) {
-        #     cat('==> DECOY\n')
-        # }
     }
 
     res <- list(sw_results=sw.results,
-         input_complexes=input.complexes.sw,
-         corr.cutoff=corr.cutoff,
-         window.size=window.size)
+                input_complexes=input.complexes.sw,
+                corr.cutoff=corr.cutoff,
+                window.size=window.size,
+                protein.complex.assoc=subset(protein.traces.sw.all, select=c(protein_id, complex_id)
+                ))
 
     class(res) <- 'targetedSWResult'
 
     res
-
-#     plotTraces(wideProtTracesToLong(subset(protein.traces.sw.decoy, select=-is_decoy))[complex_id == 'DECOY_10'], 'protein_id', 'complex_id')
-
-
-#     true.complexes <- unique(manual.annotations.final$complex_id)
-#     detected.complexes <- input.complexes.sw[is.complex.validated]
-
-#     TP <- sum(detected.complexes %in% true.complexes)
-#     FN <- length(true.complexes) - TP
-
-#     FP <- sum(!(detected.complexes %in% true.complexes))
-#     negative.complexes <- # == false targets and decoys
-#         input.complexes.sw[!(input.complexes %in% true.complexes)]
-#     TN <- sum(!(negative.complexes %in% detected.complexes))
-
-#     TPR <- TP / (TP + FN)
-#     FPR <- FP / (TN + FP)
 }
 
 
@@ -284,7 +261,7 @@ targetedSWGridSearch <- function(protein.traces.sw,
     grid.size <- length(corr.cutoffs) * length(window.sizes)
     res <- lapply(seq_along(corr.cutoffs), function(i) {
         corr.cutoff <- corr.cutoffs[i]
-        lapply(seq_along(window.sizes), function(j) {
+        over.window.sizes <- lapply(seq_along(window.sizes), function(j) {
             window.size <- window.sizes[j]
             cat(paste(rep('+', 80), collapse=''), '\n\n')
             cat(sprintf('GRID SEARCH ITERATION: %d / %d\n',
@@ -295,7 +272,10 @@ targetedSWGridSearch <- function(protein.traces.sw,
                        window.size=window.size,
                        n.cores=n.cores)
         })
+        names(over.window.sizes) <- window.sizes
+        over.window.sizes
     })
+    names(res) <- corr.cutoffs
     class(res) <- 'targetedSWGridSearchResult'
     res
 }
@@ -324,3 +304,89 @@ mergeTargetedSWGridSearch <- function(targeted.sw.gs.results) {
     }))
     gs.res.long
 }
+
+
+evaluateTargetedGWGridSearch <- function(targeted.sw.gs.results) {
+    sw.gs.roc.stats <- do.call(rbind, lapply(targeted.sw.gs.results,
+                                             function(runs.over.window) {
+        do.call(rbind, lapply(runs.over.window, function(targeted.sw.result) {
+
+            input.complexes <- targeted.sw.result$input_complexes
+            is.complex.validated <- logical(length(input.complexes))
+
+            for (i in seq_along(targeted.sw.result$sw_results)) {
+                res <- targeted.sw.result$sw_results[[i]]
+
+                if (!is.na(res) && !is.null(res) && class(res) != 'try-error') {
+                    # Extract run stats
+                    complex.id <- input.complexes[i]
+                    is.decoy.complex <- grepl('DECOY', complex.id)
+                    subgroups.dt <- res$subgroups.dt
+                    corr.cutoff <- res$corr.cutoff
+                    window.size <- res$window.size
+
+                    # Get the size of the complex as annotated in CORUM
+                    if (!is.decoy.complex) {
+                        annotated.complex.size <-
+                            length(corum.complex.protein.assoc[complex_id == complex.id, protein_id])
+                    } else {
+                        # Decoys are always full
+                        annotated.complex.size <-
+                            nrow(targeted.sw.result$protein.complex.assoc[complex_id == complex.id])
+                    }
+
+                    has.enough.subunits <-
+                        any((subgroups.dt$n_subunits >= 0.5 *
+                             annotated.complex.size) & subgroups.dt$n_subunits >= 2)
+                    if (has.enough.subunits) {
+                        is.complex.validated[i] <- TRUE
+                    } else {
+                        is.complex.validated[i] <- FALSE
+                    }
+                } else {
+                    is.complex.validated[i] <- FALSE
+                }
+            }
+
+            true.complexes <- unique(manual.annotations.final$complex_id)
+            detected.complexes <- input.complexes[is.complex.validated]
+
+            TP <- sum(detected.complexes %in% true.complexes)
+            FN <- length(true.complexes) - TP
+
+            FP <- sum(!(detected.complexes %in% true.complexes))
+            negative.complexes <- # == false targets and decoys
+                input.complexes[!(input.complexes %in% true.complexes)]
+            TN <- sum(!(negative.complexes %in% detected.complexes))
+
+            TPR <- TP / (TP + FN)
+            FPR <- FP / (TN + FP)
+
+            data.table(TPR=TPR, FPR=FPR, corr_cutoff=corr.cutoff,
+                       window_size=window.size)
+        }))
+    }))
+}
+
+
+
+
+
+        # if (nrow(res.sw$subgroups.dt) > 0) {
+        #     if (any(res.sw$subgroups.dt$n_subunits >= 0.5 * annotated.complex.size)) {
+        #         is.complex.validated[i] <- TRUE
+        #     } else {
+        #         is.complex.validated[i] <- FALSE
+        #     }
+        # } else {
+        #     is.complex.validated[i] <- FALSE
+        # }
+
+        # cat('Complex', complex.id, 'was found to be', is.complex.validated[i], '\n')
+        # cat('Is manually annotated? ==>', complex.id %in% manual.annotations.final$complex_id, '\n')
+        # if (is.decoy.complex) {
+        #     cat('==> DECOY\n')
+        # }
+
+
+#     plotTraces(wideProtTracesToLong(subset(protein.traces.sw.decoy, select=-is_decoy))[complex_id == 'DECOY_10'], 'protein_id', 'complex_id')
