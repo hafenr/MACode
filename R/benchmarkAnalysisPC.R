@@ -63,6 +63,11 @@ calculateDetectionStatsPC <- function(gs.run.directory, manual.annotations,
         true.complexes <- unique(manual.annotations$complex_id)
         detected.complexes <- unique(detected.complex.features$complex_id)
 
+        # FINAL TARGETS FILTER
+        detected.complexes <- detected.complexes[detected.complexes %in% FINAL.TARGETS]
+        input.complexes <- FINAL.TARGETS
+
+
         TP <- sum(detected.complexes %in% true.complexes)
         FN <- length(true.complexes) - TP
 
@@ -76,11 +81,11 @@ calculateDetectionStatsPC <- function(gs.run.directory, manual.annotations,
         # }
 
         # Compute the site localization rate
-        site.localization.rate[i, ] <- sapply(window.range, function(w) {
-            computeSiteLocalizationRate(detected.complex.features,
-                                        manual.annotations,
-                                        w)
-        })
+        # site.localization.rate[i, ] <- sapply(window.range, function(w) {
+        #     computeSiteLocalizationRate(detected.complex.features,
+        #                                 manual.annotations,
+        #                                 w)
+        # })
     }
     roc.stats <- data.table(iternum=iter.nums, FPR=FPR, TPR=TPR)
 
@@ -131,30 +136,30 @@ computeSiteLocalizationRate <- function(detected.features,
 
 #' Plot the pseudo ROC curve for the output of `calculateDetectionStats`.
 #' @export
-plotROC <- function(stats, complex.centric=FALSE, title=NULL) {
+plotROC <- function(stats, best.row) {
     roc.stats <- stats$roc.stats
-    distances.to.topleft <- apply(subset(roc.stats, select=c(FPR, TPR)), 1, function(fpr.tpr) {
-        sqrt(sum((c(0, 1) - fpr.tpr)^2))
-    })
-    best.iter <- which.min(distances.to.topleft)
+    # distances.to.topleft <- apply(subset(roc.stats, select=c(FPR, TPR)), 1, function(fpr.tpr) {
+    #     sqrt(sum((c(0, 1) - fpr.tpr)^2))
+    # })
+    # best.iter <- which.min(distances.to.topleft)
 
-    if (is.null(title)) {
-        title <- paste0(sprintf('Grid search results - %s-centric workflow',
-                               if (complex.centric) 'complex' else 'protein'))
-    }
     p <- ggplot(roc.stats) +
         geom_abline(slope=1) +
         geom_point(aes(x=FPR, y=TPR), alpha=0.5) +
-        geom_point(aes(x=FPR, y=TPR), data=roc.stats[best.iter, ], color='red') +
-        # geom_segment(aes(xend=FPR, yend=TPR), x=0, y=1, alpha=0.01) +
-        geom_segment(aes(xend=FPR, yend=TPR), x=0, y=1, color='red',
-                     linetype=2,
-                     data=roc.stats[best.iter, ]) +
+        geom_point(aes(x=FPR, y=TPR), data=best.row, color='red', size=3) +
+        geom_segment(aes(xend=FPR, yend=TPR, x=FPR), y=0, linetype=3,
+                     data=best.row) +
+        geom_segment(aes(xend=FPR, yend=TPR, y=TPR), x=0, linetype=3,
+                     data=best.row) +
+        annotate('text', x=best.row$FPR, y=0,
+                 label=round(best.row$FPR, 2),
+                 fontface=2) +
+        annotate('text', y=best.row$TPR, x=0,
+                 label=round(best.row$TPR, 2), 
+                 fontface=2) +
         xlim(0, 1) +
         ylim(0, 1) +
-        # geom_vline(xintercept=0.1, linetype=3) +
-        labs(title=title,
-             x='false positive rate',
+        labs(x='false positive rate',
              y='true positive rate')
     print(p)
     p
@@ -162,8 +167,8 @@ plotROC <- function(stats, complex.centric=FALSE, title=NULL) {
 
 #' Plot the site localization rate for the output of `calculateDetectionStats`.
 #' @export
-plotSiteLocalizationRate <- function(stats, index) {
-    p <- ggplot(data.frame(localization.rate=stats$site.localization.rate[index, ],
+plotSiteLocalizationRate <- function(localization.rate) {
+    p <- ggplot(data.frame(localization.rate=localization.rate,
                       window.size=c(2, 4, 8, 12, 18))) +
         geom_point(aes(x=window.size, y=localization.rate)) +
         geom_line(aes(x=window.size, y=localization.rate)) +

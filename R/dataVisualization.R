@@ -15,8 +15,8 @@
 plotTraces <- function(traces.dt, subunit.id.col, parent.id.col, title='',
                        plot=T, log=F) {
     p <- ggplot(traces.dt) +
-                geom_point(aes_string(x='sec', y='intensity',
-                                      color=subunit.id.col)) +
+                # geom_point(aes_string(x='sec', y='intensity',
+                #                       color=subunit.id.col)) +
                 geom_line(aes_string(x='sec', y='intensity',
                                      color=subunit.id.col)) +
                 ggtitle(title) +

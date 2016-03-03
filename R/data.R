@@ -126,9 +126,16 @@
 
 #' Summed up protein traces using peptides from experiment 4 with the settings:
 #' \itemize{
+#'  \item applied corr filter on peptide level
 #'  \item m-score less than 1 percent  
 #'  \item no requant
 #'  \item no decoy
 #'  \item only 2 most intense peptides summed up
 #' }
 'protein.traces.2peps'
+
+
+#' A data.table produced by deconvProteinTraces using the protein traces
+#' protein.traces.2peps as a base.
+#' Deconv settings were: K=3, n.range=1:4.
+'features.deconv'

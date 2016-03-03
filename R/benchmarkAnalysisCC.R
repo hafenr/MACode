@@ -3,7 +3,7 @@
 calculateDetectionStatsCC <- function(gs.run.directory,
                                       manual.annotations,
                                       sec.range=3:83,
-                                      input.complexes=NULL,
+                                      input.complexes.target,
                                       d.score.cutoffs=c(-2, -1, 0, 1, 2, 3),
                                       window.range=c(2, 4, 8, 12, 18)) {
     files <- list.files(gs.run.directory)
@@ -16,6 +16,10 @@ calculateDetectionStatsCC <- function(gs.run.directory,
         matrix(0, ncol=length(window.range), nrow=length(iter.dirs))
     FPR <- numeric()
     TPR <- numeric()
+    TPs <- numeric()
+    FPs <- numeric()
+    TNs <- numeric()
+    FNs <- numeric()
 
     for (i in seq_along(iter.dirs)) {
         cat('********************************************************************************\n')
@@ -26,28 +30,38 @@ calculateDetectionStatsCC <- function(gs.run.directory,
         iter.num <- iter.nums[i]
         params <- fread(file.path(gs.run.directory, d, 'params.csv'))
 
-        input.complexes <- unique(input.complexes)
-
         feature.file.name <-
             file.path(gs.run.directory, d, 'sec_proteins_with_dscore.csv')
+        decoy.complex.assoc.file.name <-
+            file.path(gs.run.directory, d, 'decoy_proteins.tsv')
+        decoy.complex.protein.assoc <- 
+            fread(decoy.complex.assoc.file.name)
+
+        input.complexes.target <- unique(input.complexes.target)
+        input.complexes.decoy <- unique(decoy.complex.protein.assoc$protein_id)
+        input.complexes <- c(input.complexes.target, input.complexes.decoy)
+
+        # FILTER
+        input.complexes <- FINAL.TARGETS
 
         if (!file.exists(feature.file.name)) {
             TPR <- c(TPR, rep(NA, length(d.score.cutoffs)))
             FPR <- c(FPR, rep(NA, length(d.score.cutoffs)))
+            TPs <- c(TPs, rep(NA, length(d.score.cutoffs)))
+            FPs <- c(FPs, rep(NA, length(d.score.cutoffs)))
+            TNs <- c(TNs, rep(NA, length(d.score.cutoffs)))
+            FNs <- c(FNs, rep(NA, length(d.score.cutoffs)))
             next
         }
 
         detected.complex.features.cc <- fread(feature.file.name)
         detected.complex.features <- 
             convertToPCComplexFeatureFormat(detected.complex.features.cc,
+                                            decoy.complex.protein.assoc,
                                             corum.complex.protein.assoc)
-        detected.complex.features$d_score <- detected.complex.features.cc$d_score
-
         # Only complexes with >= 2 subunits should be considered 'true'
         detected.complex.features <- detected.complex.features[n_subunits >= 2, ]
         # Only complexes with a 50% completeness should pass
-        # (should be all of them in the case of the PC workflow, since the pipeline
-        # filters this already)
         detected.complex.features <- 
             detected.complex.features[(n_subunits / n_subunits_annotated) >= 0.5, ]
         
@@ -61,6 +75,10 @@ calculateDetectionStatsCC <- function(gs.run.directory,
                 detected.complex.features[d_score >= d.score.cutoff]
             detected.complexes <- unique(detected.complex.features.cut$complex_id)
 
+            # FILTER
+            detected.complexes <-
+                detected.complexes[detected.complexes %in% FINAL.TARGETS]
+
             TP <- sum(detected.complexes %in% true.complexes)
             FN <- length(true.complexes) - TP
 
@@ -71,16 +89,21 @@ calculateDetectionStatsCC <- function(gs.run.directory,
 
             TPR <- c(TPR, TP / (TP + FN))
             FPR <- c(FPR, FP / (TN + FP))
+            TNs <- c(TNs, TN)
+            FPs <- c(FPs, FP)
+            TPs <- c(TPs, TP)
+            FNs <- c(FNs, FN)
         }
         # Compute the site localization rate
-        site.localization.rate[i, ] <- sapply(window.range, function(w) {
-            computeSiteLocalizationRate(detected.complex.features,
-                                        manual.annotations.full.complete,
-                                        w)
-        })
+        # site.localization.rate[i, ] <- sapply(window.range, function(w) {
+        #     computeSiteLocalizationRate(detected.complex.features,
+        #                                 manual.annotations.full.complete,
+        #                                 w)
+        # })
     }
     roc.stats <- data.table(iternum=iter.nums, d_score_cutoff=d.score.cutoffs,
-                            FPR=FPR, TPR=TPR)
+                            FPR=FPR, TPR=TPR,
+                            FN=FNs, TP=TPs, FP=FPs, TN=TNs)
 
     list(roc.stats=roc.stats,
          site.localization.rate=site.localization.rate,

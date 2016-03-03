@@ -6,7 +6,6 @@
 #' @export
 detectGroupsWithinWindow <- function(tracemat, corr.cutoff, with.plot=F,
                                      sec=NULL) {
-
     if (nrow(tracemat) == 2) {
         corr <- proxy::simil(tracemat, method='correlation')[1]
         if (corr > corr.cutoff) {
@@ -31,13 +30,7 @@ detectGroupsWithinWindow <- function(tracemat, corr.cutoff, with.plot=F,
     # Cut the dendrogram at distance 0.3, i.e. pearson corr == 0.7,
     # this will give a vector of group labels.
     group.assignments <- cutree(cl, h=1 - corr.cutoff)
-    # if () {
-    #     browser()
-    # }
     group.found <- length(unique(group.assignments)) < length(group.assignments)
-    if (sec >= 70 && group.found) {
-        browser()
-    }
     group.assignments
 }
 
@@ -58,7 +51,7 @@ detectSubgroupsSW <- function(trace.mat,
                               corr.cutoff=0.75,
                               window.size=15,
                               with.plot=F,
-                              noise.quantile=0.1) {
+                              noise.quantile=0.2) {
     if (nrow(trace.mat) < 2) {
         stop('Trace matrix needs at least 2 proteins')
     }
@@ -138,11 +131,9 @@ detectSubgroupsSW <- function(trace.mat,
     })
     groups.dt <- do.call(rbind, groups.dt.list)
 
-    rownames(trace.mat) <- protein.names
     result <- list(subgroups.dt=groups.dt,
                    window.size=window.size,
-                   corr.cutoff=corr.cutoff,
-                   trace.mat=trace.mat)
+                   corr.cutoff=corr.cutoff)
     class(result) <- 'swResult'
     result
 }
@@ -185,7 +176,10 @@ plot.swResult <- function(sw.result, protein.traces.long, n.largest=NULL,
               # panel.grid.minor=element_blank(),
               # plot.background=element_blank()
               )
-    p <- multiplot(trace.plot, subgroup.plot)
+    p <- multiplot(
+                   trace.plot + ylim(c(0, 5e06))
+                   ,
+                   subgroup.plot)
     print(p)
     p
 }
@@ -199,6 +193,7 @@ targetedSW <- function(protein.traces.sw, corr.cutoff=0.99, window.size=15,
     setkey(protein.traces.sw, complex_id)
 
     # Generate decoys
+    set.seed(42)
     protein.traces.sw.decoy <- data.table::copy(protein.traces.sw)
     protein.traces.sw.decoy[, complex_id := sample(complex_id)]
     protein.traces.sw.decoy[, complex_id := paste0('DECOY_', complex_id)]
@@ -350,6 +345,10 @@ evaluateTargetedGWGridSearch <- function(targeted.sw.gs.results) {
 
             true.complexes <- unique(manual.annotations.final$complex_id)
             detected.complexes <- input.complexes[is.complex.validated]
+            # FILTER X
+            detected.complexes <-
+                detected.complexes[detected.complexes %in% FINAL.TARGETS]
+            input.complexes <- FINAL.TARGETS
 
             TP <- sum(detected.complexes %in% true.complexes)
             FN <- length(true.complexes) - TP
